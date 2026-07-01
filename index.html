@@ -67,12 +67,11 @@
   .pos{color:var(--pos)} .neg{color:var(--neg)}
   .paren{font-size:.72em;font-weight:600}
 
-  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--card)}
-  .storescroll{max-height:70vh;overflow:auto}
+  .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
-  thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;z-index:3;text-align:right}
-  thead th:first-child{text-align:left;left:0;z-index:5}
+  thead th{position:sticky;top:var(--stick,104px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right}
+  thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
   tr.section td{background:var(--sec);font-weight:700;color:var(--ink);letter-spacing:.03em}
   tr.section .rowlabel{background:var(--sec)}
@@ -205,6 +204,15 @@ STORES.forEach(s=>{ data[s.id]=data[s.id]||{};
   INPUTS.forEach(r=>{ const a=data[s.id][r.k];
     if(!Array.isArray(a)||a.length!==12) data[s.id][r.k]=Array(12).fill(0); }); });
 
+// previous-year dataset (比較用・CSV取込で投入)
+const PK="pl_store_prev_v1";
+function loadPrev(){ try{const v=localStorage.getItem(PK);return v?JSON.parse(v):null;}catch(e){return mem[PK]||null;} }
+function persistPrev(){ try{localStorage.setItem(PK,JSON.stringify(prev));}catch(e){mem[PK]=prev;} }
+let prev=loadPrev()||{};
+STORES.forEach(s=>{ prev[s.id]=prev[s.id]||{};
+  INPUTS.forEach(r=>{ const a=prev[s.id][r.k];
+    if(!Array.isArray(a)||a.length!==12) prev[s.id][r.k]=Array(12).fill(0); }); });
+
 const yen=n=>{const v=Math.round(n||0);const s=v.toLocaleString("ja-JP");return v<0?`(¥${(-v).toLocaleString("ja-JP")})`:(v===0?"–":`¥${s}`);};
 const yenInput=v=>v?("¥"+Math.round(v).toLocaleString("ja-JP")):"";
 const cntInput=v=>v?Math.round(v).toLocaleString("ja-JP"):"";
@@ -232,8 +240,8 @@ const fmtName=n=>String(n).replace(/([（(][^（()）]*[)）])/g,'<span class="p
 const stripParen=n=>String(n).replace(/[（(][^（()）]*[)）]/g,'').trim();
 
 // derive per-store per-month metrics
-function metrics(sid,m){
-  const d=data[sid];const g=k=>(+d[k][m]||0);
+function metricsD(ds,sid,m){
+  const d=ds[sid];const g=k=>(+d[k][m]||0);
   const sales=g("uriage")+g("soryoIn");
   const vc=g("genka")+g("tesuryo")+g("point")+g("kessai")+g("hasso")+g("agency");
   const gp=sales-vc;
@@ -244,6 +252,7 @@ function metrics(sid,m){
     gpRate:sales?gp/sales:0, opRate:sales?op/sales:0, adRate:sales?ad/sales:0,
     roas:g("kokoku")?sales/g("kokoku"):0, aov:kensu?sales/kensu:0};
 }
+function metrics(sid,m){ return metricsD(data,sid,m); }
 function annual(sid){
   let a={sales:0,vc:0,gp:0,ad:0,op:0,kokoku:0,kensu:0};
   for(let m=0;m<12;m++){const x=metrics(sid,m);a.sales+=x.sales;a.vc+=x.vc;a.gp+=x.gp;a.ad+=x.ad;a.op+=x.op;a.kokoku+=(+data[sid].kokoku[m]||0);a.kensu+=(+data[sid].kensu[m]||0);}
@@ -372,6 +381,7 @@ const METRICS=[
 ];
 const metricMeta=k=>METRICS.find(m=>m.key===k);
 function valM(sid,m,meta){ return meta.raw?(+data[sid][meta.key][m]||0):metrics(sid,m)[meta.key]; }
+function valMD(ds,sid,m,meta){ return meta.raw?(+ds[sid][meta.key][m]||0):metricsD(ds,sid,m)[meta.key]; }
 function valA(sid,meta){ if(meta.raw)return sum(data[sid][meta.key]);
   const a=annual(sid); return a[meta.key]!==undefined?a[meta.key]:0; }
 
@@ -426,6 +436,50 @@ function renderDonut(el,items,kind){
   el.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center"><div style="flex:0 0 auto">${svg}</div><div style="flex:1;min-width:220px">${legend}</div></div>`;
 }
 // per-store charts under its table
+function renderVGroup(el,labels,series,kind){
+  const fmtAx=AX[kind]||AX.yen;
+  const W=700,H=260,L=56,R=14,T=14,B=30,iw=W-L-R,ih=H-T-B;
+  let vals=[0]; series.forEach(s=>s.values.forEach(v=>vals.push(v)));
+  let mx=Math.max(...vals),mn=Math.min(0,...vals); if(mx===mn)mx=mn+1;
+  const pad=(mx-mn)*0.08; mx+=pad; if(mn<0)mn-=pad;
+  const Y=v=>T+ih-(v-mn)/(mx-mn)*ih, zeroY=Y(0);
+  const n=labels.length, gw=iw/n, sn=series.length, bw=Math.max(3,(gw*0.6)/sn);
+  let g="";
+  for(let k=0;k<=4;k++){const gv=mn+(mx-mn)*k/4,gy=Y(gv);
+    g+=`<line x1="${L}" y1="${gy}" x2="${W-R}" y2="${gy}" style="stroke:var(--line)"/>`;
+    g+=`<text x="${L-5}" y="${gy+3}" text-anchor="end" style="fill:var(--muted);font-size:10px">${fmtAx(gv)}</text>`;}
+  if(mn<0)g+=`<line x1="${L}" y1="${zeroY}" x2="${W-R}" y2="${zeroY}" style="stroke:var(--line-strong)"/>`;
+  labels.forEach((lb,i)=>{const cx=L+gw*i+gw/2;
+    g+=`<text x="${cx}" y="${H-9}" text-anchor="middle" style="fill:var(--muted);font-size:10px">${lb}</text>`;
+    const total=bw*sn+2*(sn-1), start=cx-total/2;
+    series.forEach((s,si)=>{const v=s.values[i]||0,x=start+si*(bw+2),y=Math.min(zeroY,Y(v)),h=Math.max(1,Math.abs(Y(v)-zeroY));
+      g+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" style="fill:${s.color}"/>`;});
+  });
+  el.innerHTML=legendHTML(series)+`<svg viewBox="0 0 ${W} ${H}" width="100%" style="height:auto;font-family:var(--sans)">${g}</svg>`;
+}
+function renderMoM(el,labels,series){
+  if(!el)return;
+  const W=700,H=250,L=46,R=14,T=14,B=28,iw=W-L-R,ih=H-T-B;
+  let vals=[0]; series.forEach(s=>s.values.forEach(v=>{if(isFinite(v))vals.push(v);}));
+  let mx=Math.max(...vals),mn=Math.min(...vals); if(mx===mn){mx+=0.1;mn-=0.1;}
+  const pad=(mx-mn)*0.12||0.1; mx+=pad; mn-=pad;
+  const Y=v=>T+ih-(v-mn)/(mx-mn)*ih, zeroY=Y(0);
+  const n=labels.length, gw=iw/n, series_n=series.length, bw=Math.max(3,(gw*0.62)/series_n);
+  let g="";
+  for(let k=0;k<=4;k++){const gv=mn+(mx-mn)*k/4,gy=Y(gv);
+    g+=`<line x1="${L}" y1="${gy}" x2="${W-R}" y2="${gy}" style="stroke:var(--line)"/>`;
+    g+=`<text x="${L-5}" y="${gy+3}" text-anchor="end" style="fill:var(--muted);font-size:10px">${(gv*100).toFixed(0)}%</text>`;}
+  g+=`<line x1="${L}" y1="${zeroY}" x2="${W-R}" y2="${zeroY}" style="stroke:var(--line-strong)"/>`;
+  labels.forEach((lb,i)=>{const cx=L+gw*i+gw/2;
+    g+=`<text x="${cx}" y="${H-9}" text-anchor="middle" style="fill:var(--muted);font-size:10px">${lb}</text>`;
+    const total=bw*series_n+2*(series_n-1), start=cx-total/2;
+    series.forEach((s,si)=>{const v=s.values[i]; if(!isFinite(v))return;
+      const x=start+si*(bw+2), y=Math.min(zeroY,Y(v)), h=Math.max(1,Math.abs(Y(v)-zeroY));
+      g+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" style="fill:${s.color}"/>`;});
+  });
+  el.innerHTML=legendHTML(series)+`<svg viewBox="0 0 ${W} ${H}" width="100%" style="height:auto;font-family:var(--sans)">${g}</svg>`;
+}
+function momArr(arr){const out=[];for(let i=1;i<12;i++){const p=arr[i-1];out.push(p>0?(arr[i]-p)/p:NaN);}return out;}
 function drawStoreCharts(sid){
   const t=document.getElementById("ch-trend-"+sid); if(!t)return;
   const salesArr=[],gpArr=[],opArr=[];
@@ -444,6 +498,10 @@ function drawStoreCharts(sid){
     {label:"広告販促費",value:a.ad,color:"#bf1722"},
     {label:"営業利益",value:a.op,color:"#0f766e"},
   ],"yen");
+  renderMoM(document.getElementById("ch-mom-"+sid),MONTHS.slice(1),[
+    {name:"売上合計",color:"#1f6f8b",values:momArr(salesArr)},
+    {name:"粗利益",color:"#0f766e",values:momArr(gpArr)},
+  ]);
 }
 
 // store pages
@@ -464,10 +522,11 @@ STORES.forEach(s=>{
       <div class="period" id="per-${s.id}" style="font-size:12px;color:var(--muted);margin-top:2px">決算期：${fyRangeText()}</div></div>
       <div class="readout"><div class="lab">通期 営業利益</div><div class="val" id="ro-${s.id}">–</div></div>
     </div>
-    <div class="scroll storescroll"><table id="tb-${s.id}"></table></div>
+    <div class="scroll"><table id="tb-${s.id}"></table></div>
     <div style="margin-top:18px;display:grid;grid-template-columns:1fr;gap:16px">
       <div class="card"><div class="chart-title">月別推移（売上合計・粗利益・営業利益）</div><div id="ch-trend-${s.id}"></div></div>
       <div class="card"><div class="chart-title">通期の売上構成（比例図）</div><div id="ch-mix-${s.id}"></div></div>
+      <div class="card"><div class="chart-title">前月比（決算期中の売上合計・粗利益の増減率）</div><div id="ch-mom-${s.id}"></div></div>
     </div>`;
   main.appendChild(pg);
   pg.querySelector("[data-go]").onclick=()=>show("menu");
@@ -580,6 +639,7 @@ ap.innerHTML=`
       <option value="bar">店舗比較（通期）</option>
       <option value="line">月別推移（店舗別）</option>
       <option value="donut">店舗別 構成比</option>
+      <option value="yoy">前年比（月別・縦棒）</option>
     </select>
   </div>
   <div class="card"><div class="chart-title" id="an-ctitle"></div><div id="an-chart"></div></div>
@@ -609,13 +669,37 @@ function renderAnalysis(){
         values:Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valM(s.id,m,meta),0))});
     }
     renderLine(chart,MONTHS,series,meta.kind);
+  }else if(view==="yoy"){
+    document.getElementById("an-ctitle").textContent=`${meta.label}：前年比（今年 vs 前年・月別／全店合計）`;
+    if(isRatio){ chart.innerHTML='<div style="color:var(--muted);font-size:12px;padding:14px">前年比は金額・件数など合計できる項目のみ対象です（率・ROAS・客単価は月別推移でご確認ください）。</div>'; }
+    else{
+      const cur=Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valMD(data,s.id,m,meta),0));
+      const pre=Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valMD(prev,s.id,m,meta),0));
+      if(pre.every(v=>!v)) chart.innerHTML='<div style="color:var(--muted);font-size:12px;padding:14px">前年データがありません。「全店舗一括CSV取込」で前年のCSVを選び、「前年データとして取り込む」にチェックして取り込むと、ここに前年比が表示されます。</div>';
+      else renderVGroup(chart,MONTHS,[{name:"今年",color:"#1f6f8b",values:cur},{name:"前年",color:"#c99700",values:pre}],meta.kind);
+    }
   }else{ // donut
     document.getElementById("an-ctitle").textContent=`${meta.label}：店舗別 構成比（通期）`;
     if(isRatio){ chart.innerHTML='<div style="color:var(--muted);font-size:12px;padding:14px">構成比は金額項目のみ対象です（率・ROASは店舗比較／月別推移でご確認ください）。</div>'; }
     else{ renderDonut(chart,STORES.map(s=>({label:s.name,value:valA(s.id,meta),color:s.color})),meta.kind); }
   }
-  // data table: store × month + 通期
+  // data table
   const fmt=FMT[meta.kind]||yen;
+  const tw=document.getElementById("an-table");
+  if(view==="yoy" && !isRatio){
+    const cur=Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valMD(data,s.id,m,meta),0));
+    const pre=Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valMD(prev,s.id,m,meta),0));
+    const cs=cur.reduce((a,b)=>a+b,0), ps=pre.reduce((a,b)=>a+b,0);
+    const yoy=(c,p)=>p>0?((c-p)/p*100).toFixed(1)+"%":"–";
+    let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--ink);color:#fff">区分</th>`+
+      MONTHS.map(m=>`<th style="background:var(--ink);color:#fff">${m}</th>`).join("")+`<th style="background:var(--ink);color:#fff">通期</th></tr></thead><tbody>`;
+    h+=`<tr><td class="rowlabel">今年</td>`+cur.map(v=>`<td class="num">${fmt(v)}</td>`).join("")+`<td class="total">${fmt(cs)}</td></tr>`;
+    h+=`<tr><td class="rowlabel">前年</td>`+pre.map(v=>`<td class="num">${fmt(v)}</td>`).join("")+`<td class="total">${fmt(ps)}</td></tr>`;
+    h+=`<tr class="sub"><td class="rowlabel">前年比</td>`+cur.map((v,i)=>`<td class="num">${yoy(v,pre[i])}</td>`).join("")+`<td class="total">${yoy(cs,ps)}</td></tr>`;
+    h+="</tbody></table>";
+    tw.innerHTML=h;
+    return;
+  }
   let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--ink);color:#fff">店舗</th>`+
     MONTHS.map(m=>`<th style="background:var(--ink);color:#fff">${m}</th>`).join("")+`<th style="background:var(--ink);color:#fff">通期</th></tr></thead><tbody>`;
   STORES.forEach(s=>{
@@ -629,7 +713,7 @@ function renderAnalysis(){
     h+=`<td class="total">${fmt(STORES.reduce((t,s)=>t+valA(s.id,meta),0))}</td></tr>`;
   }
   h+="</tbody></table>";
-  const tw=document.getElementById("an-table"); tw.innerHTML=h;
+  tw.innerHTML=h;
 }
 
 function renderSummary(){
@@ -789,17 +873,17 @@ function clearStore(sid){
 /* ---------- CSV import ---------- */
 // field synonyms (specific first; detection uses longest substring match)
 const FIELD_SYN=[
-  ["uriage",["売上高","売上金額","商品売上","商品代金","総売上","売上"]],
-  ["soryoIn",["送料収入","送料"]],
-  ["genka",["商品原価","仕入原価","原価","仕入"]],
-  ["tesuryo",["モール手数料","販売手数料","システム利用料","手数料"]],
-  ["point",["ポイント原資","ポイント","クーポン","値引"]],
-  ["kessai",["決済手数料","決済"]],
-  ["hasso",["発送費","送料原価","配送費","配送料"]],
+  ["uriage",["売上高","売上金額","商品売上","商品代金","商品合計","商品小計","商品計","販売金額","販売価格","受注金額","総売上","売上"]],
+  ["soryoIn",["送料収入","送料金額","送料合計","送料"]],
+  ["genka",["商品原価","仕入原価","原価金額","仕入金額","仕入額","原価","仕入"]],
+  ["tesuryo",["モール手数料","落札手数料","システム利用料","システム手数料","販売手数料","出店料","モール利用料","手数料"]],
+  ["point",["ポイント原資","利用ポイント","ポイント","クーポン利用","クーポン","値引き","値引","割引"]],
+  ["kessai",["決済手数料","代引手数料","決済"]],
+  ["hasso",["発送代行手数料","出荷手数料","発送費","送料原価","配送費","配送料","物流費"]],
   ["agency",["代理店運営手数料","代理店運営費","代理店手数料","運営手数料","代理店"]],
-  ["kokoku",["広告費","広告料","ＲＰＰ","RPP","広告"]],
-  ["promo",["その他販促費","販促費","アフィリエイト","アフィリ","販促"]],
-  ["kensu",["受注件数","注文件数","販売件数","出荷件数","注文数","受注数","件数"]],
+  ["kokoku",["広告宣伝費","スポンサープロダクト","広告費用","広告費","広告料","ＲＰＰ","RPP","スポンサー","広告"]],
+  ["promo",["その他販促費","アフィリエイト費","モールプロモーション","販促費","アフィリエイト","アフィリ","販促"]],
+  ["kensu",["受注件数","注文件数","販売件数","出荷件数","注文数","受注数","出荷数","件数"]],
 ];
 const FIELD_LABEL=Object.fromEntries(INPUTS.map(r=>[r.k,r.label]));
 function parseCSV(text){
@@ -819,6 +903,7 @@ function jnum(s){ if(s==null)return 0; s=String(s).replace(/[¥￥,\s　円％%]
   const v=parseFloat(s); return isNaN(v)?0:(neg?-v:v); }
 function parseMonth(s){ s=String(s).trim();
   let m=s.match(/(\d{4})\s*[-\/年.\s]\s*(\d{1,2})/); if(m)return +m[2];
+  m=s.match(/^(\d{4})(\d{2})$/); if(m){const n=+m[2];if(n>=1&&n<=12)return n;}   // YYYYMM 例:202607
   m=s.match(/^\s*(\d{2})\s*[-\/年.]\s*(\d{1,2})\s*月?\s*$/); if(m)return +m[2];
   m=s.match(/^\s*(\d{1,2})\s*月/); if(m)return +m[1];
   m=s.match(/^\s*(\d{1,2})\s*$/); if(m){const n=+m[1];if(n>=1&&n<=12)return n;}
@@ -896,6 +981,7 @@ function openImport(defStore){
   document.getElementById("imp-pv").classList.remove("show");
   document.getElementById("imp-err").classList.remove("show");
   document.getElementById("imp-apply").disabled=true;curPlan=null;impFiles=[];
+  const pv=document.getElementById("imp-prev");if(pv)pv.checked=false;
   const mp=document.getElementById("imp-map");if(mp)mp.style.display="none";
   const mr=document.getElementById("imp-maprows");if(mr)mr.innerHTML="";
   document.getElementById("ov").classList.add("show");
@@ -1009,6 +1095,14 @@ function renderPreview(res){
 }
 function applyImport(){
   if(!curPlan)return;
+  const toPrev=document.getElementById("imp-prev")&&document.getElementById("imp-prev").checked;
+  if(toPrev){
+    curPlan.touch.forEach(({sid,f,m,v})=>{ if(prev[sid]&&prev[sid][f]) prev[sid][f][m]=Math.round(v); });
+    persistPrev();
+    closeImport();toast(`前年データとして取り込みました（${curPlan.stores.length}店舗）`);
+    if(document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
+    return;
+  }
   curPlan.touch.forEach(({sid,f,m,v})=>{ if(data[sid]&&data[sid][f]) data[sid][f][m]=Math.round(v); });
   persist();
   curPlan.stores.forEach(sid=>{
@@ -1016,6 +1110,7 @@ function applyImport(){
     recalc(sid);
   });
   if(document.getElementById("pg-summary").classList.contains("on"))renderSummary();
+  if(document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
   closeImport();toast(`取り込みました（${curPlan.stores.length}店舗）`);
   if(curPlan.stores.length===1)show(curPlan.stores[0]);
   else show("summary");
@@ -1047,6 +1142,9 @@ function downloadBulkTemplate(){
         <select id="imp-store"><option value="">— 自動判別（店舗列／ファイル名） —</option>${STORES.map(s=>`<option value="${s.id}">${s.name}</option>`).join("")}</select>
         <span style="font-size:12px;color:var(--muted)">※CSV内に店舗列があれば自動で各店舗へ振り分けます</span>
       </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin:6px 0 4px;cursor:pointer">
+        <input type="checkbox" id="imp-prev"> このCSVを<b>前年データ</b>として取り込む（分析の前年比・比較用。今年の数値は変更しません）
+      </label>
       <div class="drop" id="imp-drop">CSVファイルをここにドラッグ＆ドロップ、またはクリックして選択（複数可）<br>
         <input type="file" id="imp-file" accept=".csv,.txt,.tsv" multiple style="margin-top:10px"></div>
       <div class="err" id="imp-err"></div>
@@ -1130,6 +1228,12 @@ function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t
     else open();
   };
 })();
+
+// keep the table-header sticky offset equal to the fixed site header height
+function setStick(){const h=document.querySelector("header");if(h&&h.offsetHeight)document.documentElement.style.setProperty("--stick",h.offsetHeight+"px");}
+window.addEventListener("resize",setStick);
+window.addEventListener("load",setStick);
+setStick();
 
 applyMode();
 show("menu");
