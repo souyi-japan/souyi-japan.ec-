@@ -260,8 +260,8 @@ const cntInput=v=>v?Math.round(v).toLocaleString("ja-JP"):"";
 const COUNT_FIELDS=new Set(["kensu"]);
 const inFmt=(k,v)=>COUNT_FIELDS.has(k)?cntInput(v):yenInput(v);
 // ===== 管理者ログイン（簡易ロック） =====
-// 既定：ID「souyijapanec」／パスワード「souyi2026」。変更したい場合はこのハッシュ値の更新をご依頼ください。
-const ADMIN_HASH="76b8e97b";
+// 既定：ID「souyijapanec」／パスワード「souyi2026」。
+const ADMIN_HASH=["76b8e97b"];
 function hashPw(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return ("0000000"+h.toString(16)).slice(-8);}
 let isAdmin=false;
 try{ if(sessionStorage.getItem("pl_admin_on")==="1") isAdmin=true; }catch(e){}
@@ -654,8 +654,13 @@ function colorCell(td,fmt,v,f){
 const sp=document.createElement("section");sp.className="page";sp.id="pg-summary";
 sp.innerHTML=`
   <span class="back" data-go="menu">◀ メニューに戻る</span>
-  <h2 style="margin:6px 0 4px">通期サマリー（全店舗）</h2>
-  <div id="sum-period" style="font-size:12px;color:var(--muted);margin-bottom:14px"></div>
+  <h2 style="margin:6px 0 4px">全店舗サマリー</h2>
+  <div id="sum-period" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <label style="font-size:13px;font-weight:700">期間</label>
+    <select id="sum-mode" style="padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);font-family:var(--sans)"></select>
+    <span style="font-size:12px;color:var(--muted)">通期（合計）または各月に切り替えできます</span>
+  </div>
   <div class="sumcards" id="sumcards"></div>
   <div class="scroll"><table class="sumtable" id="sumtable"></table></div>
   <div class="tools"><button class="btn edit-only" id="allimport">全店舗一括CSV取込</button><button class="btn" id="allcsv">全店まとめてCSV書き出し</button></div>`;
@@ -663,6 +668,7 @@ main.appendChild(sp);
 sp.querySelector("[data-go]").onclick=()=>show("menu");
 sp.querySelector("#allcsv").onclick=exportAll;
 sp.querySelector("#allimport").onclick=()=>openImport(null);
+sp.querySelector("#sum-mode").onchange=renderSummary;
 
 // ===== analysis page =====
 const ap=document.createElement("section");ap.className="page";ap.id="pg-analysis";
@@ -758,28 +764,41 @@ function renderAnalysis(){
 }
 
 function renderSummary(){
-  const tot={sales:0,gp:0,ad:0,op:0,kokoku:0};
-  const rows=STORES.map(s=>{const a=annual(s.id);["sales","gp","ad","op","kokoku"].forEach(k=>tot[k]+=a[k]);return {s,a};});
-  tot.opRate=tot.sales?tot.op/tot.sales:0;tot.adRate=tot.sales?tot.ad/tot.sales:0;tot.gpRate=tot.sales?tot.gp/tot.sales:0;
+  const sel=document.getElementById("sum-mode");
+  const labs=fyLabels();
+  const cur=sel.value||"all";
+  sel.innerHTML=`<option value="all">通期（合計）</option>`+labs.map((lb,i)=>`<option value="${i}">${lb}</option>`).join("");
+  sel.value=cur; if(sel.selectedIndex<0)sel.value="all";
+  const mode=sel.value;
+  const get = mode==="all" ? (sid=>annual(sid)) : (sid=>metrics(sid,+mode));
+  const pl = mode==="all" ? "通期" : labs[+mode];
+  const tot={sales:0,gp:0,ad:0,op:0,kensu:0};
+  const rows=STORES.map(s=>{const a=get(s.id);["sales","gp","ad","op","kensu"].forEach(k=>tot[k]+=a[k]);return {s,a};});
+  tot.opRate=tot.sales?tot.op/tot.sales:0;tot.adRate=tot.sales?tot.ad/tot.sales:0;tot.aov=tot.kensu?tot.sales/tot.kensu:0;
   const cards=[
-    {k:"通期売上（全店）",v:yen(tot.sales),c:""},
-    {k:"通期粗利益（全店）",v:yen(tot.gp),c:tot.gp>0?"pos":tot.gp<0?"neg":""},
-    {k:"通期営業利益（全店）",v:yen(tot.op),c:tot.op>0?"pos":tot.op<0?"neg":""},
-    {k:"営業利益率（全店）",v:pct(tot.opRate),c:tot.opRate>0?"pos":tot.opRate<0?"neg":""},
+    {k:`${pl}売上（全店）`,v:yen(tot.sales),c:""},
+    {k:`${pl}粗利益（全店）`,v:yen(tot.gp),c:tot.gp>0?"pos":tot.gp<0?"neg":""},
+    {k:`${pl}営業利益（全店）`,v:yen(tot.op),c:tot.op>0?"pos":tot.op<0?"neg":""},
+    {k:`${pl}営業利益率（全店）`,v:pct(tot.opRate),c:tot.opRate>0?"pos":tot.opRate<0?"neg":""},
+    {k:`${pl}広告費（全店）`,v:yen(tot.ad),c:""},
+    {k:`${pl}件数（全店）`,v:fmtBy("cnt",tot.kensu),c:""},
+    {k:`${pl}客単価（全店）`,v:yen(tot.aov),c:""},
   ];
-  const spn=document.getElementById("sum-period"); if(spn)spn.textContent="決算期："+fyRangeText();
+  const spn=document.getElementById("sum-period"); if(spn)spn.textContent="決算期："+fyRangeText()+"／表示："+(mode==="all"?"通期合計":pl);
   document.getElementById("sumcards").innerHTML=cards.map(c=>`<div class="sc"><div class="k">${c.k}</div><div class="v ${c.c}">${c.v}</div></div>`).join("");
-  let h=`<thead><tr><th>店舗</th><th>通期売上</th><th>通期粗利益</th><th>通期営業利益</th><th>営業利益率</th><th>広告費比率</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>店舗</th><th>${pl}売上</th><th>${pl}粗利益</th><th>${pl}営業利益</th><th>営業利益率</th><th>広告費</th><th>広告費比率</th><th>件数</th><th>客単価</th></tr></thead><tbody>`;
   rows.forEach(({s,a})=>{
     h+=`<tr><td class="store" data-go="${s.id}">${fmtName(s.name)}<span style="display:block;font-size:11px;color:var(--muted);font-weight:700">${s.code}</span></td>
       <td class="num">${yen(a.sales)}</td><td class="num">${yen(a.gp)}</td>
       <td class="num ${a.op>0?'pos':a.op<0?'neg':''}">${yen(a.op)}</td>
-      <td class="num">${pct(a.opRate)}</td><td class="num">${pct(a.adRate)}</td></tr>`;
+      <td class="num">${pct(a.opRate)}</td><td class="num">${yen(a.ad)}</td><td class="num">${pct(a.adRate)}</td>
+      <td class="num">${fmtBy("cnt",a.kensu)}</td><td class="num">${yen(a.aov)}</td></tr>`;
   });
   h+=`<tr class="sub"><td class="rowlabel">合計</td>
     <td class="num">${yen(tot.sales)}</td><td class="num">${yen(tot.gp)}</td>
     <td class="num ${tot.op>0?'pos':tot.op<0?'neg':''}">${yen(tot.op)}</td>
-    <td class="num">${pct(tot.opRate)}</td><td class="num">${pct(tot.adRate)}</td></tr></tbody>`;
+    <td class="num">${pct(tot.opRate)}</td><td class="num">${yen(tot.ad)}</td><td class="num">${pct(tot.adRate)}</td>
+    <td class="num">${fmtBy("cnt",tot.kensu)}</td><td class="num">${yen(tot.aov)}</td></tr></tbody>`;
   const t=document.getElementById("sumtable");t.innerHTML=h;
   t.querySelectorAll("[data-go]").forEach(td=>td.onclick=()=>show(td.dataset.go));
 }
@@ -1240,7 +1259,7 @@ function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t
     <div class="mb">
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">記入・編集・CSV取込は管理者のみ可能です。ログインしない場合は閲覧のみになります。</div>
       <div class="row"><label style="width:60px">ID</label><input id="lg-id" style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-family:var(--sans)" autocomplete="username"></div>
-      <div class="row"><label style="width:60px">パスワード</label><input id="lg-pw" type="password" style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-family:var(--sans)" autocomplete="current-password"></div>
+      <div class="row"><label style="width:70px">pass</label><input id="lg-pw" type="password" style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-family:var(--sans)" autocomplete="current-password"></div>
       <div class="err" id="lg-err">⚠ IDまたはパスワードが違います。</div>
       <div class="tools" style="margin-bottom:0;margin-top:12px">
         <button class="btn" id="lg-go" style="border-color:#1f6f8b;color:#1f6f8b;font-weight:700">ログイン</button>
@@ -1254,7 +1273,7 @@ function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t
   function submit(){
     const id=document.getElementById("lg-id").value.trim();
     const pw=document.getElementById("lg-pw").value;
-    if(hashPw(id+":"+pw)===ADMIN_HASH){
+    if(ADMIN_HASH.includes(hashPw(id+":"+pw))){
       isAdmin=true; try{sessionStorage.setItem("pl_admin_on","1");}catch(e){}
       applyMode(); close(); toast("管理者モードになりました（編集可）");
     } else { document.getElementById("lg-err").classList.add("show"); }
