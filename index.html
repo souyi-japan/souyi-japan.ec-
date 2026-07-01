@@ -136,6 +136,47 @@
   .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e2efda;color:#386b2e;margin-left:8px}
   .err{color:var(--neg);font-size:13px;font-weight:600;margin-top:10px;display:none}
   .err.show{display:block}
+
+  /* ===== スマートフォン最適化 ===== */
+  @media (max-width:720px){
+    .bar{flex-wrap:wrap;gap:10px;padding:10px 14px}
+    .brandlogo{height:30px;max-width:150px}
+    .company{font-size:11px;gap:7px}
+    .dept{font-size:10px;padding:2px 8px}
+    .bar h1{font-size:15px}
+    .bar .sub{font-size:10px}
+    .hbtn{margin-left:auto;font-size:11px;padding:7px 10px}
+    nav{padding:0 8px}
+    #nav button{font-size:13px;padding:9px 10px}
+    main{padding:14px 10px 70px}
+    .menu-hero{padding:16px 15px 15px;border-radius:12px;margin-bottom:16px}
+    .menu-hero h2{font-size:18px}
+    .menu-hero p{font-size:12px;line-height:1.6}
+    .tiles{grid-template-columns:1fr;gap:10px}
+    .sheet-head{gap:10px;margin-bottom:12px}
+    .name{font-size:15px}
+    .readout{margin-left:0}
+    .readout .val{font-size:20px}
+    .tools{gap:6px}
+    .btn{font-size:12px;padding:8px 10px}
+    .scroll{overflow-x:auto}           /* スマホでは表だけ横スクロール（ページ全体は横に動かさない） */
+    th,td{padding:7px 8px;font-size:12px}
+    .rowlabel{min-width:132px}
+    .card{padding:12px 12px}
+    .chart-title{font-size:12px}
+    #ov{padding:10px}
+    .modal{margin:8px auto;max-width:100%}
+    .mb{padding:14px}
+    .pv table{min-width:520px}
+  }
+  @media (max-width:420px){
+    .brandlogo{height:26px;max-width:120px}
+    .company{font-size:10px}
+    .hbtn{font-size:10px;padding:6px 8px}
+    .menu-hero h2{font-size:16px}
+    .readout .val{font-size:18px}
+    th,td{font-size:11px;padding:6px 6px}
+  }
 </style>
 
 <header>
