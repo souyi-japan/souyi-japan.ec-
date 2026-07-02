@@ -813,6 +813,7 @@ man.innerHTML=`
     <button class="btn subtab" data-sub="csv">CSV取込ガイド</button>
     <button class="btn edit-only" id="man-bulk" style="border-color:#1f6f8b;color:#1f6f8b;font-weight:700">⇪ 全店舗一括CSV取込</button>
     <button class="btn" id="man-analysis" style="border-color:#1f6f8b;color:#1f6f8b;font-weight:700">▶ 分析</button>
+    <button class="btn edit-only" id="man-sync" style="border-color:#0f766e;color:#0f766e;font-weight:700">🔄 自動連携設定</button>
   </div>
   <div id="man-write">
     <div class="guide">
@@ -889,6 +890,7 @@ main.appendChild(man);
 man.querySelector("[data-go]").onclick=()=>show("menu");
 man.querySelector("#man-bulk").onclick=()=>openImport(null);
 man.querySelector("#man-analysis").onclick=()=>show("analysis");
+man.querySelector("#man-sync").onclick=()=>openSync();
 const manSubs=man.querySelectorAll(".subtab");
 manSubs.forEach(b=>b.onclick=()=>{
   manSubs.forEach(x=>x.classList.toggle("on",x===b));
@@ -1295,6 +1297,92 @@ window.addEventListener("resize",setStick);
 window.addEventListener("load",setStick);
 setStick();
 
+// ===== データ自動連携（連携URLから取得） =====
+const SUK="pl_sync_url_v1", SAK="pl_sync_auto_v1", SLK="pl_sync_last_v1";
+function syncGet(k){ try{return localStorage.getItem(k);}catch(e){return mem[k]||null;} }
+function syncSet(k,v){ try{localStorage.setItem(k,v);}catch(e){mem[k]=v;} }
+function applyPlanToData(res){
+  res.touch.forEach(({sid,f,m,v})=>{ if(data[sid]&&data[sid][f]) data[sid][f][m]=Math.round(v); });
+  persist();
+  res.stores.forEach(sid=>{
+    document.querySelectorAll(`#tb-${sid} input`).forEach(inp=>{const v=data[inp.dataset.s][inp.dataset.k][+inp.dataset.m];inp.value=inFmt(inp.dataset.k,v);});
+    recalc(sid);
+  });
+  if(document.getElementById("pg-summary").classList.contains("on"))renderSummary();
+  if(document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
+}
+async function syncNow(manual){
+  const url=(syncGet(SUK)||"").trim();
+  const st=document.getElementById("sy-status");
+  if(!url){ if(st)st.textContent="連携URLが未設定です。"; if(manual)toast("連携URLを入力してください"); return; }
+  if(st)st.textContent="同期中…";
+  try{
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const text=await r.text();
+    const rows=parseCSV(text);
+    const res=buildPlan(rows,null);
+    applyPlanToData(res);
+    const now=new Date().toLocaleString("ja-JP");
+    syncSet(SLK,now);
+    if(st)st.textContent="最終同期："+now+"（"+res.stores.length+"店舗）";
+    if(manual)toast("同期しました（"+res.stores.length+"店舗）");
+  }catch(e){
+    const msg=String(e&&e.message||e);
+    if(st)st.textContent="同期に失敗しました："+msg+"（URL公開設定・CORSをご確認ください）";
+    if(manual)toast("同期に失敗しました");
+  }
+}
+function openSync(){
+  document.getElementById("sy-url").value=syncGet(SUK)||"";
+  document.getElementById("sy-auto").checked=(syncGet(SAK)==="1");
+  const last=syncGet(SLK); document.getElementById("sy-status").textContent=last?("最終同期："+last):"未同期";
+  document.getElementById("sov").style.display="block";
+}
+(function(){
+  const sov=document.createElement("div");sov.id="sov";
+  sov.style.cssText="position:fixed;inset:0;background:rgba(16,22,30,.55);display:none;z-index:70;padding:16px;overflow:auto";
+  sov.innerHTML=`<div class="modal" style="max-width:560px">
+    <div class="mh"><h3>🔄 データ自動連携</h3><span class="x" id="sy-x">×</span></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">連携URL（公開したCSV/GASのURL）を設定すると、そのデータを取り込みます。「自動同期」をONにすると、ページを開くたびに自動で最新に更新します。店舗列・年月・各項目の列があるCSVを想定しています（通常のCSV取込と同じ形式）。</div>
+
+      <div style="background:#eef6f5;border:1px solid #cfe6e2;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-weight:800;color:#0f766e;margin-bottom:6px">■ 設定ガイド（ネクストエンジン自動連携）</div>
+        <ol style="margin:0;padding-left:18px;font-size:12px;line-height:1.7">
+          <li><b>NEでアプリを作る</b>：ネクストエンジン管理画面「アプリを作る」→「メインデータ利用アプリ」を作成し、client_id / client_secret を取得。受注・明細の取得を「許可する」に設定します。</li>
+          <li><b>橋渡し（GAS）を用意</b>：Google Apps Script が NE 認証 → 受注データ取得 → 店舗別・月別に集計 → Googleスプレッドシートへ書き出し。redirect_uri には GAS のURLを設定し、時間主導トリガーで1日1回など自動実行します（GASのコードは別途ご提供します）。</li>
+          <li><b>シートをCSVで公開</b>：スプレッドシートで「ファイル → 共有 → ウェブに公開 → 形式：CSV」を選び、公開されたCSVのURLをコピーします。</li>
+          <li><b>ここに貼り付け</b>：下の「連携URL」にそのCSV URLを貼り付け、「自動同期」をON →「保存して今すぐ同期」を押します。以後は開くたびに自動反映されます。</li>
+        </ol>
+        <div style="font-size:11px;color:#6b6b6b;margin-top:8px">※ GitHub Pages（github.io）から取得するため、GASのURL直叩きはCORSで失敗する場合があります。<b>公開スプレッドシートのCSV URL</b>を使う方が確実です。<br>※ 自動で取れるのはNEにあるデータ（売上・送料・原価・手数料・ポイント・件数）です。<b>広告費・発送費・代理店運営手数料はNEに無い</b>ため、各店舗ページで手入力してください（連携では上書きされません）。</div>
+      </div>
+
+      <div class="row" style="align-items:flex-start"><label style="width:74px;padding-top:8px">連携URL</label>
+        <input id="sy-url" placeholder="https://... （公開シートCSV or GAS）" style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-family:var(--sans)"></div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;margin:8px 0;cursor:pointer">
+        <input type="checkbox" id="sy-auto"> 自動同期（このページを開くたびに取得）
+      </label>
+      <div id="sy-status" style="font-size:12px;color:var(--muted);margin:6px 0 2px">未同期</div>
+      <div class="note" style="margin-top:10px">広告費・発送費・代理店運営手数料はネクストエンジンに無いため、連携では更新されません（各店舗ページで手入力してください）。取り込みは連携データに含まれる月・項目のみ上書きします。</div>
+      <div class="tools" style="margin-bottom:0;margin-top:12px">
+        <button class="btn" id="sy-save" style="border-color:#0f766e;color:#0f766e;font-weight:700">保存して今すぐ同期</button>
+        <button class="btn" id="sy-savecfg">設定だけ保存</button>
+        <button class="btn" id="sy-close">閉じる</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(sov);
+  const close=()=>sov.style.display="none";
+  const saveCfg=()=>{ syncSet(SUK,document.getElementById("sy-url").value.trim()); syncSet(SAK,document.getElementById("sy-auto").checked?"1":"0"); };
+  document.getElementById("sy-x").onclick=close;
+  document.getElementById("sy-close").onclick=close;
+  document.getElementById("sy-savecfg").onclick=()=>{saveCfg();toast("連携設定を保存しました");};
+  document.getElementById("sy-save").onclick=()=>{saveCfg();syncNow(true);};
+  sov.addEventListener("click",e=>{if(e.target===sov)close();});
+})();
+
 applyMode();
 show("menu");
+// ページを開いたら、自動同期がONなら取得
+if(syncGet(SAK)==="1" && (syncGet(SUK)||"").trim()){ setTimeout(()=>syncNow(false),300); }
 </script>
