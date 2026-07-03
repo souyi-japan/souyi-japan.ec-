@@ -1440,7 +1440,7 @@ function persistLocalOnly_(){ try{localStorage.setItem(ADK,JSON.stringify(allDat
 function persistPrevLocalOnly_(){ try{localStorage.setItem(APK,JSON.stringify(allPrev));}catch(e){mem[APK]=allPrev;} }
 // 入力時：共有保存が有効なら、少し待ってからまとめてクラウドへ保存（連続入力での連打を防止）
 function cloudScheduleSave(){
-  if(cloudGet(CLK)!=="1")return;
+  if(!CLOUD_URL && cloudGet(CLK)!=="1")return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>cloudSaveNow(false),1500);
 }
@@ -1449,7 +1449,7 @@ async function cloudSaveNow(manual){
   const st=document.getElementById("cl-status");
   if(manual&&st)st.textContent="保存中…";
   try{
-    await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    await fetch(CLOUD_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},
       body:JSON.stringify({action:"save",allData,allPrev,fy:FY})});
     const now=new Date().toLocaleString("ja-JP");
     cloudSet(CLSK,now);
