@@ -70,7 +70,7 @@
   .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
-  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right}
+  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right;padding:4px 8px;font-size:12px;line-height:1.2}
   thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
   tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
@@ -159,7 +159,7 @@
     .readout .val{font-size:20px}
     .tools{gap:6px}
     .btn{font-size:12px;padding:8px 10px}
-    .scroll{overflow-x:auto}           /* スマホでは表だけ横スクロール（ページ全体は横に動かさない） */
+    /* スマホでも見出しを固定（PCと同じ）：横スクロール枠は使わずページごとスクロール */
     th,td{padding:7px 8px;font-size:12px}
     .rowlabel{min-width:132px}
     .card{padding:12px 12px}
@@ -590,7 +590,6 @@ STORES.forEach(s=>{
       <button class="btn" data-tpl="${s.id}">取込テンプレCSV</button>
       <button class="btn warn edit-only" data-clear="${s.id}">この店舗を全消去</button>
     </div>
-    <div class="hint">青い数字のセルが入力欄です。入力すると自動保存され、合計・利益が即時に再計算されます。「CSV取込」でネクストエンジンの売上情報CSVなどを読み込めます。</div>
     <div class="sheet-head">
       <div><div class="name"><span class="dot" style="background:${s.color}"></span>${fmtName(s.name)} ― 月次損益</div>
       <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;margin-top:1px">${s.code}</div>
