@@ -246,24 +246,37 @@ const INPUTS=[
   {k:"av_access",label:"アクセス人数"},
   {k:"av_kokoku",label:"広告経由 広告費"},
 ];
-const SK="pl_store_data_v1";
-function load(){ try{const v=localStorage.getItem(SK);return v?JSON.parse(v):null;}catch(e){return mem[SK]||null;} }
-function persist(){ try{localStorage.setItem(SK,JSON.stringify(data));}catch(e){mem[SK]=data;} cloudScheduleSave(); }
+// ===== 決算期（年）ごとにデータを分けて保存 =====
+// 旧バージョン（単年のみ）のキー。互換のため読み込み時の移行にのみ使用します。
+const SK_LEGACY="pl_store_data_v1", PK_LEGACY="pl_store_prev_v1";
+function loadJSON_(k){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return mem[k]||null;} }
+function fyKeyOf(fy){ return fy.y+"-"+fy.m; }
+const ADK="pl_store_alldata_v1", APK="pl_store_allprev_v1";
+let allData=loadJSON_(ADK)||{};
+let allPrev=loadJSON_(APK)||{};
+// 旧バージョンの単年データが残っていて、まだ新形式に移行前なら、現在の決算期のデータとして取り込む
+(function migrateLegacy_(){
+  const k=fyKeyOf(FY);
+  if(!allData[k]){ const legacy=loadJSON_(SK_LEGACY); if(legacy)allData[k]=legacy; }
+  if(!allPrev[k]){ const legacy=loadJSON_(PK_LEGACY); if(legacy)allPrev[k]=legacy; }
+})();
+// 指定の決算期キーに、全店舗×全項目の12ヶ月配列が存在するよう整える
+function ensureYear_(k){
+  allData[k]=allData[k]||{};
+  STORES.forEach(s=>{ allData[k][s.id]=allData[k][s.id]||{};
+    INPUTS.forEach(r=>{ const a=allData[k][s.id][r.k];
+      if(!Array.isArray(a)||a.length!==12) allData[k][s.id][r.k]=Array(12).fill(0); }); });
+  allPrev[k]=allPrev[k]||{};
+  STORES.forEach(s=>{ allPrev[k][s.id]=allPrev[k][s.id]||{};
+    INPUTS.forEach(r=>{ const a=allPrev[k][s.id][r.k];
+      if(!Array.isArray(a)||a.length!==12) allPrev[k][s.id][r.k]=Array(12).fill(0); }); });
+}
+ensureYear_(fyKeyOf(FY));
+function persist(){ try{localStorage.setItem(ADK,JSON.stringify(allData));}catch(e){mem[ADK]=allData;} cloudScheduleSave(); }
+function persistPrev(){ try{localStorage.setItem(APK,JSON.stringify(allPrev));}catch(e){mem[APK]=allPrev;} cloudScheduleSave(); }
+let data=allData[fyKeyOf(FY)];
+let prev=allPrev[fyKeyOf(FY)];
 
-let data=load()||{};
-// ensure every store has every field as a 12-length array (also migrates older saves)
-STORES.forEach(s=>{ data[s.id]=data[s.id]||{};
-  INPUTS.forEach(r=>{ const a=data[s.id][r.k];
-    if(!Array.isArray(a)||a.length!==12) data[s.id][r.k]=Array(12).fill(0); }); });
-
-// previous-year dataset (比較用・CSV取込で投入)
-const PK="pl_store_prev_v1";
-function loadPrev(){ try{const v=localStorage.getItem(PK);return v?JSON.parse(v):null;}catch(e){return mem[PK]||null;} }
-function persistPrev(){ try{localStorage.setItem(PK,JSON.stringify(prev));}catch(e){mem[PK]=prev;} cloudScheduleSave(); }
-let prev=loadPrev()||{};
-STORES.forEach(s=>{ prev[s.id]=prev[s.id]||{};
-  INPUTS.forEach(r=>{ const a=prev[s.id][r.k];
-    if(!Array.isArray(a)||a.length!==12) prev[s.id][r.k]=Array(12).fill(0); }); });
 
 const yen=n=>{const v=Math.round(n||0);const s=v.toLocaleString("ja-JP");return v<0?`(¥${(-v).toLocaleString("ja-JP")})`:(v===0?"–":`¥${s}`);};
 const yenInput=v=>v?("¥"+Math.round(v).toLocaleString("ja-JP")):"";
@@ -383,7 +396,11 @@ const fyY=document.getElementById("fy-year"),fyM=document.getElementById("fy-mon
 fyY.value=FY.y;fyM.value=FY.m;
 function syncFYrange(){document.getElementById("fy-range").textContent="（"+fyRangeText()+"）";}
 syncFYrange();
-function onFYchange(){ FY={y:+fyY.value,m:+fyM.value}; saveFY(); MONTHS=fyLabels(); syncFYrange(); refreshFiscal(); }
+function onFYchange(){
+  FY={y:+fyY.value,m:+fyM.value}; saveFY(); MONTHS=fyLabels(); syncFYrange();
+  const k=fyKeyOf(FY); ensureYear_(k); data=allData[k]; prev=allPrev[k];
+  refreshFiscal();
+}
 fyY.onchange=onFYchange; fyM.onchange=onFYchange;
 // rebuild tables & period labels after a fiscal change
 function refreshFiscal(){
@@ -1379,17 +1396,24 @@ function cloudLoad(manual){
     window[cbName]=function(res){
       try{
         const state=res&&res.state;
-        if(!state||!state.data){ finish(false,"共有データはまだありません"); return; }
-        Object.keys(state.data).forEach(sid=>{ if(data[sid]){ Object.keys(state.data[sid]).forEach(k=>{
-          const a=state.data[sid][k]; if(Array.isArray(a)&&a.length===12) data[sid][k]=a.map(v=>+v||0); }); } });
-        if(state.prev) Object.keys(state.prev).forEach(sid=>{ if(prev[sid]){ Object.keys(state.prev[sid]).forEach(k=>{
-          const a=state.prev[sid][k]; if(Array.isArray(a)&&a.length===12) prev[sid][k]=a.map(v=>+v||0); }); } });
-        if(state.fy && state.fy.y && state.fy.m){ FY={y:+state.fy.y,m:+state.fy.m}; saveFYlocalOnly_(); }
+        if(!state || (!state.allData && !state.data)){ finish(false,"共有データはまだありません"); return; }
+        const mergeArr=(dst,src)=>{ Object.keys(src).forEach(sid=>{ if(dst[sid]){ Object.keys(src[sid]).forEach(k=>{
+          const a=src[sid][k]; if(Array.isArray(a)&&a.length===12) dst[sid][k]=a.map(v=>+v||0); }); } }); };
+        if(state.allData){
+          // 新形式：決算期ごとに分かれたデータをまとめて取り込む
+          Object.keys(state.allData).forEach(k=>{ ensureYear_(k); mergeArr(allData[k],state.allData[k]); });
+          if(state.allPrev) Object.keys(state.allPrev).forEach(k=>{ ensureYear_(k); mergeArr(allPrev[k],state.allPrev[k]); });
+        } else if(state.data){
+          // 旧形式（単年のみ）：保存時点の決算期（state.fy、無ければ現在の決算期）として取り込む
+          const k=(state.fy&&state.fy.y&&state.fy.m)?fyKeyOf({y:+state.fy.y,m:+state.fy.m}):fyKeyOf(FY);
+          ensureYear_(k); mergeArr(allData[k],state.data);
+          if(state.prev) mergeArr(allPrev[k],state.prev);
+        }
         persistLocalOnly_(); persistPrevLocalOnly_();
+        // 表示中の決算期のポインタを最新の中身に合わせ直す
+        ensureYear_(fyKeyOf(FY)); data=allData[fyKeyOf(FY)]; prev=allPrev[fyKeyOf(FY)];
         MONTHS=fyLabels();
         STORES.forEach(s=>{ buildTable(s.id); const p=document.getElementById("per-"+s.id); if(p)p.textContent="決算期："+fyRangeText(); });
-        const fyYsel=document.getElementById("fy-year"),fyMsel=document.getElementById("fy-month");
-        if(fyYsel)fyYsel.value=FY.y; if(fyMsel)fyMsel.value=FY.m;
         if(typeof syncFYrange==="function")syncFYrange();
         if(document.getElementById("pg-summary")&&document.getElementById("pg-summary").classList.contains("on"))renderSummary();
         if(document.getElementById("pg-analysis")&&document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
@@ -1403,9 +1427,8 @@ function cloudLoad(manual){
   });
 }
 // 反映専用（読込結果を書き戻す際に再度クラウド保存を予約しないための内部用）
-function persistLocalOnly_(){ try{localStorage.setItem(SK,JSON.stringify(data));}catch(e){mem[SK]=data;} }
-function persistPrevLocalOnly_(){ try{localStorage.setItem(PK,JSON.stringify(prev));}catch(e){mem[PK]=prev;} }
-function saveFYlocalOnly_(){ try{localStorage.setItem(FYK,JSON.stringify(FY));}catch(e){mem[FYK]=FY;} }
+function persistLocalOnly_(){ try{localStorage.setItem(ADK,JSON.stringify(allData));}catch(e){mem[ADK]=allData;} }
+function persistPrevLocalOnly_(){ try{localStorage.setItem(APK,JSON.stringify(allPrev));}catch(e){mem[APK]=allPrev;} }
 // 入力時：共有保存が有効なら、少し待ってからまとめてクラウドへ保存（連続入力での連打を防止）
 function cloudScheduleSave(){
   if(cloudGet(CLK)!=="1")return;
@@ -1418,7 +1441,7 @@ async function cloudSaveNow(manual){
   if(manual&&st)st.textContent="保存中…";
   try{
     await fetch(CLOUD_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"save",data,prev,fy:FY})});
+      body:JSON.stringify({action:"save",allData,allPrev,fy:FY})});
     const now=new Date().toLocaleString("ja-JP");
     cloudSet(CLSK,now);
     if(st)st.textContent="最終保存："+now;
