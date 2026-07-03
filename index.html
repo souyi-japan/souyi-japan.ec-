@@ -219,7 +219,8 @@ function saveFY(){ try{localStorage.setItem(FYK,JSON.stringify(FY));}catch(e){me
 function calOf(i){ const idx=(FY.m-1)+i; return {y:FY.y+Math.floor(idx/12), m:(idx%12)+1}; } // 列i→暦年月
 function slotOf(cm){ return ((cm-FY.m)%12+12)%12; }                                        // 暦月→列
 function fyLabels(){ return Array.from({length:12},(_,i)=>{const c=calOf(i);return `${c.m}月`;}); }
-function fyRangeText(){ const a=calOf(0),b=calOf(11); return `${a.y}年${a.m}月〜${b.y}年${b.m}月`; }
+function fyTermNo(){ return calOf(0).y-2008; } // 開始年 2025→第17期, 2026→第18期
+function fyRangeText(){ const a=calOf(0),b=calOf(11); return `${a.y}年${a.m}月〜${b.y}年${b.m}月　【第${fyTermNo()}期目】`; }
 let MONTHS=fyLabels();
 // input row keys
 const INPUTS=[
