@@ -73,7 +73,7 @@
   thead th{position:sticky;top:var(--stick,104px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right}
   thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
-  tr.section td{background:var(--sec);font-weight:700;color:var(--ink);letter-spacing:.03em}
+  tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
   tr.section .rowlabel{background:var(--sec)}
   tr.sub td{background:#f4f6f4;font-weight:700} tr.sub .rowlabel{background:#f4f6f4;font-weight:700}
   tr.gp td{background:#eaf3ea} tr.gp .rowlabel{background:#eaf3ea;font-weight:700}
@@ -223,8 +223,8 @@ function fyRangeText(){ const a=calOf(0),b=calOf(11); return `${a.y}年${a.m}月
 let MONTHS=fyLabels();
 // input row keys
 const INPUTS=[
-  {k:"uriage",label:"売上高（商品代金）"},
-  {k:"soryoIn",label:"送料収入（顧客負担分）"},
+  {k:"uriage",label:"売上高"},
+  {k:"soryoIn",label:"売上高（先月比増額）"},
   {k:"genka",label:"商品原価"},
   {k:"tesuryo",label:"モール手数料"},
   {k:"point",label:"ポイント原資・クーポン"},
@@ -234,6 +234,12 @@ const INPUTS=[
   {k:"kokoku",label:"広告費（RPP/スポンサー/Y!広告等）"},
   {k:"promo",label:"その他販促費"},
   {k:"kensu",label:"件数"},
+  {k:"fav",label:"お気に入り登録数"},
+  {k:"review",label:"商品レビュー数"},
+  {k:"av_uriage",label:"広告経由 売上"},
+  {k:"av_kensu",label:"広告経由 売上件数"},
+  {k:"av_access",label:"アクセス人数"},
+  {k:"av_kokoku",label:"広告経由 広告費"},
 ];
 const SK="pl_store_data_v1";
 function load(){ try{const v=localStorage.getItem(SK);return v?JSON.parse(v):null;}catch(e){return mem[SK]||null;} }
@@ -257,7 +263,9 @@ STORES.forEach(s=>{ prev[s.id]=prev[s.id]||{};
 const yen=n=>{const v=Math.round(n||0);const s=v.toLocaleString("ja-JP");return v<0?`(¥${(-v).toLocaleString("ja-JP")})`:(v===0?"–":`¥${s}`);};
 const yenInput=v=>v?("¥"+Math.round(v).toLocaleString("ja-JP")):"";
 const cntInput=v=>v?Math.round(v).toLocaleString("ja-JP"):"";
-const COUNT_FIELDS=new Set(["kensu"]);
+// 増額専用：0は¥0、マイナスは −¥（色は赤）
+const yenInc=n=>{const v=Math.round(n||0);if(v===0)return "¥0";return v<0?("−¥"+(-v).toLocaleString("ja-JP")):("¥"+v.toLocaleString("ja-JP"));};
+const COUNT_FIELDS=new Set(["kensu","fav","review","av_kensu","av_access"]);
 const inFmt=(k,v)=>COUNT_FIELDS.has(k)?cntInput(v):yenInput(v);
 // ===== 管理者ログイン（簡易ロック） =====
 // 既定：ID「souyijapanec」／パスワード「souyi2026」。
@@ -272,7 +280,7 @@ function applyMode(){
   if(y)y.disabled=!isAdmin; if(m)m.disabled=!isAdmin;
   const b=document.getElementById("authbtn"); if(b)b.textContent=isAdmin?"🔓 管理者・記入者（ログアウト）":"🔒 管理者・記入者ログイン";
 }
-const pct=n=>(n||0===0&&!isFinite(n))?"–":((n*100).toFixed(1)+"%");
+const pct=n=>(!isFinite(n)||!n)?"–":((n*100).toFixed(1)+"%");
 const mult=n=>(!isFinite(n)||!n)?"–":(n.toFixed(1)+"x");
 const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
 // render store name with the （...）suffix in a smaller font
@@ -283,21 +291,33 @@ const stripParen=n=>String(n).replace(/[（(][^（()）]*[)）]/g,'').trim();
 // derive per-store per-month metrics
 function metricsD(ds,sid,m){
   const d=ds[sid];const g=k=>(+d[k][m]||0);
-  const sales=g("uriage")+g("soryoIn");
+  const sales=g("uriage");
   const vc=g("genka")+g("tesuryo")+g("point")+g("kessai")+g("hasso")+g("agency");
   const gp=sales-vc;
   const ad=g("kokoku")+g("promo");
   const op=gp-ad;
   const kensu=g("kensu");
-  return {sales,vc,gp,ad,op,kensu,
+  const un=mm=>(d["uriage"]&&mm>=0&&mm<12?(+d["uriage"][mm]||0):0);
+  const prevU=m>0?un(m-1):0;
+  const uriageInc=(m>0 && prevU!==0 && un(m)!==0)?(un(m)-prevU):0;   // 今月−前月：前月と当月が入力済みのとき、当月側に差額を表示
+  const fv=mm=>(d["fav"]&&mm>=0?(+d["fav"][mm]||0):0);
+  const rv=mm=>(d["review"]&&mm>=0?(+d["review"][mm]||0):0);
+  const fav=fv(m), review=rv(m);
+  const favInc=m>0?fv(m)-fv(m-1):0, reviewInc=m>0?rv(m)-rv(m-1):0;
+  const gg=k=>(d[k]?(+d[k][m]||0):0);
+  const avU=gg("av_uriage"), avK=gg("av_kensu"), avA=gg("av_access"), avKok=gg("av_kokoku");
+  const avCvr=avA?avK/avA:0, avAov=avK?avU/avK:0, avAdRate=avU?avKok/avU:0, avRoas=avKok?avU/avKok:0;
+  return {sales,vc,gp,ad,op,kensu,fav,review,favInc,reviewInc,uriageInc,
+    avU,avK,avA,avKok,avCvr,avAov,avAdRate,avRoas,
     gpRate:sales?gp/sales:0, opRate:sales?op/sales:0, adRate:sales?ad/sales:0,
     roas:g("kokoku")?sales/g("kokoku"):0, aov:kensu?sales/kensu:0};
 }
 function metrics(sid,m){ return metricsD(data,sid,m); }
 function annual(sid){
-  let a={sales:0,vc:0,gp:0,ad:0,op:0,kokoku:0,kensu:0};
-  for(let m=0;m<12;m++){const x=metrics(sid,m);a.sales+=x.sales;a.vc+=x.vc;a.gp+=x.gp;a.ad+=x.ad;a.op+=x.op;a.kokoku+=(+data[sid].kokoku[m]||0);a.kensu+=(+data[sid].kensu[m]||0);}
+  let a={sales:0,vc:0,gp:0,ad:0,op:0,kokoku:0,kensu:0,favInc:0,reviewInc:0,uriageInc:0,avU:0,avK:0,avA:0,avKok:0};
+  for(let m=0;m<12;m++){const x=metrics(sid,m);a.sales+=x.sales;a.vc+=x.vc;a.gp+=x.gp;a.ad+=x.ad;a.op+=x.op;a.kokoku+=(+data[sid].kokoku[m]||0);a.kensu+=(+data[sid].kensu[m]||0);a.favInc+=x.favInc;a.reviewInc+=x.reviewInc;a.uriageInc+=x.uriageInc;a.avU+=x.avU;a.avK+=x.avK;a.avA+=x.avA;a.avKok+=x.avKok;}
   a.gpRate=a.sales?a.gp/a.sales:0;a.opRate=a.sales?a.op/a.sales:0;a.adRate=a.sales?a.ad/a.sales:0;a.roas=a.kokoku?a.sales/a.kokoku:0;a.aov=a.kensu?a.sales/a.kensu:0;
+  a.avCvr=a.avA?a.avK/a.avA:0;a.avAov=a.avK?a.avU/a.avK:0;a.avAdRate=a.avU?a.avKok/a.avU:0;a.avRoas=a.avKok?a.avU/a.avKok:0;
   return a;
 }
 
@@ -363,8 +383,8 @@ function refreshFiscal(){
 // row layout for each store table (must be defined before buildTable runs)
 const DISPLAY=[
   {type:"section",label:"【売上】"},
-  {type:"in",k:"uriage",label:"売上高（商品代金）"},
-  {type:"in",k:"soryoIn",label:"送料収入（顧客負担分）"},
+  {type:"in",k:"uriage",label:"売上高"},
+  {type:"kpi",f:"uriageInc",label:"売上高（先月比増額）",fmt:"yeninc"},
   {type:"sub",f:"sales",label:"売上合計"},
   {type:"section",label:"【変動費】"},
   {type:"in",k:"genka",label:"商品原価"},
@@ -387,6 +407,19 @@ const DISPLAY=[
   {type:"section",label:"【参考指標】"},
   {type:"kpi",f:"aov",label:"客単価（売上÷件数）",fmt:"yen"},
   {type:"in",k:"kensu",label:"件数",fmt:"cnt"},
+  {type:"in",k:"fav",label:"お気に入り登録数",fmt:"cnt"},
+  {type:"in",k:"review",label:"商品レビュー数",fmt:"cnt"},
+  {type:"kpi",f:"favInc",label:"お気に入り登録数（増加数）",fmt:"cnt"},
+  {type:"kpi",f:"reviewInc",label:"商品レビュー数（増加数）",fmt:"cnt"},
+  {type:"section",label:"【広告経由実績】"},
+  {type:"in",k:"av_uriage",label:"売上",fmt:"yen"},
+  {type:"in",k:"av_kensu",label:"売上件数",fmt:"cnt"},
+  {type:"in",k:"av_access",label:"アクセス人数",fmt:"cnt"},
+  {type:"kpi",f:"avCvr",label:"転換率（売上件数÷アクセス）",fmt:"pct"},
+  {type:"kpi",f:"avAov",label:"客単価（売上÷売上件数）",fmt:"yen"},
+  {type:"in",k:"av_kokoku",label:"広告費",fmt:"yen"},
+  {type:"kpi",f:"avAdRate",label:"広告費率（広告費÷売上）",fmt:"pct"},
+  {type:"kpi",f:"avRoas",label:"ROAS（売上÷広告費）",fmt:"mult"},
 ];
 
 // ===== charts (dependency-free SVG) & analysis =====
@@ -404,7 +437,7 @@ const METRICS=[
   {key:"vc",label:"変動費合計",kind:"yen"},
   {key:"ad",label:"広告販促費合計",kind:"yen"},
   {key:"uriage",label:"売上高",kind:"yen",raw:1},
-  {key:"soryoIn",label:"送料収入",kind:"yen",raw:1},
+  {key:"uriageInc",label:"売上高（先月比増額）",kind:"yen"},
   {key:"genka",label:"商品原価",kind:"yen",raw:1},
   {key:"tesuryo",label:"モール手数料",kind:"yen",raw:1},
   {key:"point",label:"ポイント・クーポン",kind:"yen",raw:1},
@@ -643,11 +676,12 @@ function recalc(sid){
   ro.textContent=yen(a.op);ro.className="val "+(a.op>0?"pos":a.op<0?"neg":"");
   drawStoreCharts(sid);
 }
-function fmtBy(fmt,v){return fmt==="pct"?pct(v):fmt==="mult"?mult(v):fmt==="cnt"?(Math.round(v||0).toLocaleString("ja-JP")+"件"):yen(v);}
+function fmtBy(fmt,v){return fmt==="pct"?pct(v):fmt==="mult"?mult(v):fmt==="yeninc"?yenInc(v):fmt==="cnt"?(Math.round(v||0).toLocaleString("ja-JP")+"件"):yen(v);}
 function colorCell(td,fmt,v,f){
   td.classList.remove("pos","neg");
   if((f==="op"||f==="gp")&&fmt==="yen"){ if(v>0)td.classList.add("pos"); else if(v<0)td.classList.add("neg"); }
   if(f==="opRate"){ if(v>0)td.classList.add("pos"); else if(v<0)td.classList.add("neg"); }
+  if(fmt==="yeninc"){ if(v<0)td.classList.add("neg"); }
 }
 
 // summary page
@@ -835,7 +869,7 @@ man.innerHTML=`
         <li>その他販促費：メルマガ・アフィリ・制作費など。</li>
       </ul>
       <h3>計算ロジック</h3>
-      <p>売上合計＝売上高＋送料収入 ／ 変動費合計＝原価＋手数料＋ポイント＋決済手数料＋発送費＋代理店運営手数料</p>
+      <p>売上合計＝売上高 ／ 変動費合計＝原価＋手数料＋ポイント＋決済手数料＋発送費＋代理店運営手数料</p>
       <p>列は決算期の12か月です（既定：2026年7月〜2027年6月）。メニュー上部の「決算期の開始」で年・月を変えると全ページの見出しが切り替わります。</p>
       <p>粗利益＝売上合計−変動費合計 ／ 営業利益＝粗利益−広告販促費合計</p>
       <h3>このページを公開URLにする方法</h3>
@@ -936,7 +970,6 @@ function clearStore(sid){
 // field synonyms (specific first; detection uses longest substring match)
 const FIELD_SYN=[
   ["uriage",["売上高","売上金額","商品売上","商品代金","商品合計","商品小計","商品計","販売金額","販売価格","受注金額","総売上","売上"]],
-  ["soryoIn",["送料収入","送料金額","送料合計","送料"]],
   ["genka",["商品原価","仕入原価","原価金額","仕入金額","仕入額","原価","仕入"]],
   ["tesuryo",["モール手数料","落札手数料","システム利用料","システム手数料","販売手数料","出店料","モール利用料","手数料"]],
   ["point",["ポイント原資","利用ポイント","ポイント","クーポン利用","クーポン","値引き","値引","割引"]],
@@ -946,6 +979,9 @@ const FIELD_SYN=[
   ["kokoku",["広告宣伝費","スポンサープロダクト","広告費用","広告費","広告料","ＲＰＰ","RPP","スポンサー","広告"]],
   ["promo",["その他販促費","アフィリエイト費","モールプロモーション","販促費","アフィリエイト","アフィリ","販促"]],
   ["kensu",["受注件数","注文件数","販売件数","出荷件数","注文数","受注数","出荷数","件数"]],
+  ["fav",["お気に入り登録数","お気に入り数","フォロー数","お気に入り"]],
+  ["review",["商品レビュー数","レビュー件数","レビュー数","評価数","レビュー"]],
+  ["av_access",["アクセス人数","アクセス数","訪問者数","訪問数","セッション数"]],
 ];
 const FIELD_LABEL=Object.fromEntries(INPUTS.map(r=>[r.k,r.label]));
 function parseCSV(text){
@@ -1089,7 +1125,7 @@ function handleFiles(fileList){
   });
 }
 // ===== manual column mapping (全店舗一括の追加設定) =====
-const MAPOPTS=[["","未使用"],["__store","店舗"],["__month","年月・日付"],["uriage","売上高"],["soryoIn","送料収入"],["genka","商品原価"],["tesuryo","モール手数料"],["point","ポイント・クーポン"],["kessai","決済手数料"],["hasso","発送費"],["agency","代理店運営手数料"],["kokoku","広告費"],["promo","その他販促費"],["kensu","件数"]];
+const MAPOPTS=[["","未使用"],["__store","店舗"],["__month","年月・日付"],["uriage","売上高"],["genka","商品原価"],["tesuryo","モール手数料"],["point","ポイント・クーポン"],["kessai","決済手数料"],["hasso","発送費"],["agency","代理店運営手数料"],["kokoku","広告費"],["promo","その他販促費"],["kensu","件数"],["fav","お気に入り登録数"],["review","商品レビュー数"],["av_uriage","広告経由 売上"],["av_kensu","広告経由 売上件数"],["av_access","アクセス人数"],["av_kokoku","広告経由 広告費"]];
 function guessMap(h,sampleVal){
   const f=detectField(h); if(f)return f;
   if(/店舗|ショップ|モール|shop|store|ストア|販売店/i.test(h))return "__store";
