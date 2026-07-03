@@ -294,7 +294,9 @@ try{ if(sessionStorage.getItem("pl_admin_on")==="1") isAdmin=true; }catch(e){}
 function applyMode(){
   document.body.classList.toggle("viewer",!isAdmin);
   document.querySelectorAll('.page input[data-k]').forEach(i=>{i.readOnly=!isAdmin;});
-  // 「決算期の開始」は閲覧者でも操作可（見る期を選ぶだけで、数字の入力はできません）
+  // 「決算期の開始」：年は閲覧者でも選択可、月は管理者のみ変更可
+  const m=document.getElementById("fy-month");
+  if(m)m.disabled=!isAdmin;
   const b=document.getElementById("authbtn"); if(b)b.textContent=isAdmin?"🔓 管理者・記入者（ログアウト）":"🔒 管理者・記入者ログイン";
 }
 const pct=n=>(!isFinite(n)||!n)?"–":((n*100).toFixed(1)+"%");
