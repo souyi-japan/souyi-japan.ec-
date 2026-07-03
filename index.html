@@ -56,7 +56,7 @@
   .tile.summary{border-left-color:var(--pos)} .tile.guide{border-left-color:#8a948c}
 
   /* store header readout */
-  .sheet-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;margin-bottom:14px}
+  .sheet-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;margin-bottom:0;position:sticky;top:var(--stick,104px);z-index:12;background:var(--paper);padding:10px 4px 8px;border-bottom:1px solid var(--line)}
   .sheet-head .name{font-size:20px;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
   .dot{width:13px;height:13px;border-radius:3px;display:inline-block}
   .readout{margin-left:auto;text-align:right}
@@ -70,7 +70,7 @@
   .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
-  thead th{position:sticky;top:var(--stick,104px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right}
+  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right}
   thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
   tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
@@ -341,6 +341,7 @@ function show(id){
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.go===id));
   if(id==="summary")renderSummary();
   if(id==="analysis")renderAnalysis();
+  if(typeof setStick==="function")setStick();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -1329,7 +1330,14 @@ function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t
 })();
 
 // keep the table-header sticky offset equal to the fixed site header height
-function setStick(){const h=document.querySelector("header");if(h&&h.offsetHeight)document.documentElement.style.setProperty("--stick",h.offsetHeight+"px");}
+function setStick(){
+  const h=document.querySelector("header");
+  const navH=(h&&h.offsetHeight)?h.offsetHeight:104;
+  document.documentElement.style.setProperty("--stick",navH+"px");
+  const sh=document.querySelector(".page.on .sheet-head");
+  const shH=(sh&&sh.offsetHeight)?sh.offsetHeight:0;
+  document.documentElement.style.setProperty("--stick2",(navH+shH)+"px");
+}
 window.addEventListener("resize",setStick);
 window.addEventListener("load",setStick);
 setStick();
