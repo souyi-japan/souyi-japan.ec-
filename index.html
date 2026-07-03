@@ -70,7 +70,7 @@
   .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
-  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right;padding:4px 8px;font-size:12px;line-height:1.2}
+  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right;padding:2px 8px;font-size:12px;line-height:1.15}
   thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
   tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
@@ -159,7 +159,9 @@
     .readout .val{font-size:20px}
     .tools{gap:6px}
     .btn{font-size:12px;padding:8px 10px}
-    /* スマホでも見出しを固定（PCと同じ）：横スクロール枠は使わずページごとスクロール */
+    /* スマホ：表だけを内側スクロール（縦・横とも）。見出し行と項目列を固定 */
+    .scroll{overflow:auto;max-height:72vh;-webkit-overflow-scrolling:touch}
+    thead th{top:0}
     th,td{padding:7px 8px;font-size:12px}
     .rowlabel{min-width:132px}
     .card{padding:12px 12px}
@@ -195,6 +197,16 @@
 <div id="toast"></div>
 
 <script>
+/* ====================================================================
+ *  ★共有保存URL（全端末で同じデータにする設定）★
+ *  ここに「共有保存_GAS.gs」をデプロイして得たウェブアプリのURLを貼ると、
+ *  このファイルを開いた すべての端末（PC・スマホ）が自動的に同じデータを
+ *  読み込み・保存します（端末ごとの個別設定は不要になります）。
+ *  例: const CLOUD_URL = "https://script.google.com/macros/s/XXXXX/exec";
+ *  空欄（""）のままなら、従来どおりアプリ内の「☁ 共有保存」設定を使います。
+ * ==================================================================== */
+const CLOUD_URL = "";
+
 const STORES=[
   {id:"own",name:"自社サイト",color:"var(--own)",code:"9:MS(S)"},
   {id:"rakuten",name:"楽天（SOUYI）",color:"var(--rakuten)",code:"1:RSS"},
@@ -373,7 +385,7 @@ const fyY=document.getElementById("fy-year"),fyM=document.getElementById("fy-mon
 fyY.value=FY.y;fyM.value=FY.m;
 function syncFYrange(){document.getElementById("fy-range").textContent="（"+fyRangeText()+"）";}
 syncFYrange();
-function onFYchange(){ FY={y:+fyY.value,m:+fyM.value}; saveFY(); MONTHS=fyLabels(); syncFYrange(); refreshFiscal(); }
+function onFYchange(){ FY={y:+fyY.value,m:+fyM.value}; saveFY(); MONTHS=fyLabels(); syncFYrange(); refreshFiscal(); if(typeof scheduleCloudSave==="function")scheduleCloudSave(); }
 fyY.onchange=onFYchange; fyM.onchange=onFYchange;
 // rebuild tables & period labels after a fiscal change
 function refreshFiscal(){
@@ -645,6 +657,7 @@ function onInput(e){
   const i=e.target;const v=parseFloat(String(i.value).replace(/[¥￥,\s　件]/g,""))||0;
   data[i.dataset.s][i.dataset.k][+i.dataset.m]=v;
   persist();recalc(i.dataset.s);
+  if(typeof scheduleCloudSave==="function")scheduleCloudSave();
 }
 function onFocusInput(e){
   if(!isAdmin)return;
@@ -965,6 +978,7 @@ function exportAll(){
 function clearStore(sid){
   if(!confirm(`${STORES.find(s=>s.id===sid).name} の入力をすべて消去します。よろしいですか？`))return;
   INPUTS.forEach(r=>data[sid][r.k]=Array(12).fill(0));persist();
+  if(typeof scheduleCloudSave==="function")scheduleCloudSave();
   document.querySelectorAll(`#tb-${sid} input`).forEach(i=>i.value="");recalc(sid);toast("消去しました");
 }
 
@@ -1212,6 +1226,7 @@ function applyImport(){
   if(document.getElementById("pg-summary").classList.contains("on"))renderSummary();
   if(document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
   closeImport();toast(`取り込みました（${curPlan.stores.length}店舗）`);
+  if(typeof scheduleCloudSave==="function")scheduleCloudSave();
   if(curPlan.stores.length===1)show(curPlan.stores[0]);
   else show("summary");
 }
@@ -1382,7 +1397,79 @@ function openSync(){
   document.getElementById("sy-url").value=syncGet(SUK)||"";
   document.getElementById("sy-auto").checked=(syncGet(SAK)==="1");
   const last=syncGet(SLK); document.getElementById("sy-status").textContent=last?("最終同期："+last):"未同期";
+  const cu=document.getElementById("cl-url"); if(cu)cu.value=syncGet(CUK)||"";
+  const co=document.getElementById("cl-on"); if(co)co.checked=(syncGet(COK)==="1");
+  const cs=document.getElementById("cl-status"); if(cs){const cl=syncGet(CLK);cs.textContent=cl?("最終保存/読込："+cl):"未接続";}
   document.getElementById("sov").style.display="block";
+}
+
+// ===== クラウド共有保存（全端末で同じ数字）：読込=JSONP、保存=送信 =====
+const CUK="pl_cloud_url_v1", COK="pl_cloud_on_v1", CLK="pl_cloud_last_v1";
+function cloudUrl(){ return (typeof CLOUD_URL==="string" && CLOUD_URL.trim()) ? CLOUD_URL.trim() : (syncGet(CUK)||"").trim(); }
+function cloudOn(){ return (typeof CLOUD_URL==="string" && CLOUD_URL.trim()) ? true : (syncGet(COK)==="1"); }
+function applyFullState(state){
+  if(!state||typeof state!=="object")return false;
+  let any=false;
+  if(state.fy && +state.fy.y && +state.fy.m){ FY={y:+state.fy.y,m:+state.fy.m}; saveFY(); MONTHS=fyLabels();
+    if(typeof fyY!=="undefined"&&fyY){fyY.value=FY.y;} if(typeof fyM!=="undefined"&&fyM){fyM.value=FY.m;} if(typeof syncFYrange==="function")syncFYrange(); any=true; }
+  if(state.data && typeof state.data==="object"){
+    STORES.forEach(s=>{ const src=state.data[s.id]; if(src){ data[s.id]=data[s.id]||{};
+      INPUTS.forEach(r=>{ const a=src[r.k]; data[s.id][r.k]=(Array.isArray(a)&&a.length===12)?a.map(x=>+x||0):(data[s.id][r.k]||Array(12).fill(0)); }); } });
+    persist(); any=true;
+  }
+  if(state.prev && typeof state.prev==="object"){
+    STORES.forEach(s=>{ const src=state.prev[s.id]; if(src){ prev[s.id]=prev[s.id]||{};
+      INPUTS.forEach(r=>{ const a=src[r.k]; prev[s.id][r.k]=(Array.isArray(a)&&a.length===12)?a.map(x=>+x||0):(prev[s.id][r.k]||Array(12).fill(0)); }); } });
+    persistPrev();
+  }
+  if(any){ refreshFiscal(); if(document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis(); }
+  return any;
+}
+function cloudLoad(manual){
+  const url=cloudUrl();
+  const st=document.getElementById("cl-status");
+  if(!url){ if(st)st.textContent="共有保存URLが未設定です。"; if(manual)toast("共有保存URLを入力してください"); return; }
+  if(st)st.textContent="読込中…";
+  const cbName="__plCloud"+Date.now();
+  const s=document.createElement("script");
+  let done=false;
+  const cleanup=()=>{ try{delete window[cbName];}catch(e){window[cbName]=undefined;} if(s.parentNode)s.parentNode.removeChild(s); };
+  window[cbName]=(payload)=>{ done=true;
+    try{ const state=(payload&&payload.state)?payload.state:payload;
+      if(applyFullState(state)){ const now=new Date().toLocaleString("ja-JP"); syncSet(CLK,now); if(st)st.textContent="最終読込："+now; if(manual)toast("読み込みました"); }
+      else { if(st)st.textContent="共有データは空です（まだ保存されていません）"; }
+    }catch(e){ if(st)st.textContent="読込エラー："+String(e&&e.message||e); }
+    cleanup();
+  };
+  const sep=url.indexOf("?")>=0?"&":"?";
+  s.src=url+sep+"action=load&callback="+cbName+"&t="+Date.now();
+  s.onerror=()=>{ if(!done){ if(st)st.textContent="読込に失敗しました（URL・デプロイ設定をご確認ください）"; if(manual)toast("読込に失敗しました"); cleanup(); } };
+  document.body.appendChild(s);
+  setTimeout(()=>{ if(!done){ if(st)st.textContent="読込タイムアウト（URL・公開設定をご確認ください）"; cleanup(); } },15000);
+}
+let cloudTimer=null;
+function scheduleCloudSave(){
+  if(!cloudOn())return;
+  if(!cloudUrl())return;
+  if(!isAdmin)return;                 // 保存は管理者・記入者のみ
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(()=>cloudSaveNow(false),1800);
+}
+async function cloudSaveNow(manual){
+  const url=cloudUrl();
+  const st=document.getElementById("cl-status");
+  if(!url){ if(manual)toast("共有保存URLを入力してください"); return; }
+  if(st)st.textContent="保存中…";
+  const body=JSON.stringify({action:"save", data:data, prev:prev, fy:FY});
+  try{
+    await fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:body});
+    const now=new Date().toLocaleString("ja-JP"); syncSet(CLK,now);
+    if(st)st.textContent="最終保存："+now;
+    if(manual)toast("共有保存しました");
+  }catch(e){
+    if(st)st.textContent="保存に失敗しました："+String(e&&e.message||e);
+    if(manual)toast("保存に失敗しました");
+  }
 }
 (function(){
   const sov=document.createElement("div");sov.id="sov";
@@ -1410,6 +1497,22 @@ function openSync(){
       </label>
       <div id="sy-status" style="font-size:12px;color:var(--muted);margin:6px 0 2px">未同期</div>
       <div class="note" style="margin-top:10px">広告費・発送費・代理店運営手数料はネクストエンジンに無いため、連携では更新されません（各店舗ページで手入力してください）。取り込みは連携データに含まれる月・項目のみ上書きします。</div>
+
+      <div style="background:#eef2f8;border:1px solid #ccd9ea;border-radius:10px;padding:12px 14px;margin:16px 0 6px">
+        <div style="font-weight:800;color:#1f6f8b;margin-bottom:6px">☁ 共有保存（全端末で同じ数字にする）</div>
+        <div style="font-size:12px;color:#555;line-height:1.7;margin-bottom:8px">下の「共有保存URL」（GASウェブアプリのURL）を設定すると、入力した数字を自動でクラウドに保存し、ページを開いたときに読み込みます。これにより<b>PCでもスマホでも同じ数字</b>が表示されます（端末ごとの保存ではなくなります）。設定用のGASコードは別途お渡しします。</div>
+        <div class="row" style="align-items:flex-start"><label style="width:84px;padding-top:8px">共有保存URL</label>
+          <input id="cl-url" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-family:var(--sans)"></div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;margin:8px 0;cursor:pointer">
+          <input type="checkbox" id="cl-on"> 共有保存を使う（入力を自動保存し、開いたとき読み込む）
+        </label>
+        <div id="cl-status" style="font-size:12px;color:var(--muted);margin:4px 0 2px">未接続</div>
+        <div class="tools" style="margin:8px 0 0">
+          <button class="btn" id="cl-save" style="border-color:#1f6f8b;color:#1f6f8b;font-weight:700">今すぐ共有保存</button>
+          <button class="btn" id="cl-load" style="border-color:#1f6f8b;color:#1f6f8b;font-weight:700">今すぐ読込</button>
+        </div>
+        <div style="font-size:11px;color:#6b6b6b;margin-top:8px">※ 保存は管理者・記入者のログイン時のみ行われます（閲覧者は読み込みのみ）。<br>※ 同時に複数人が編集すると、後から保存した内容で上書きされます（少人数運用向け）。</div>
+      </div>
       <div class="tools" style="margin-bottom:0;margin-top:12px">
         <button class="btn" id="sy-save" style="border-color:#0f766e;color:#0f766e;font-weight:700">保存して今すぐ同期</button>
         <button class="btn" id="sy-savecfg">設定だけ保存</button>
@@ -1418,11 +1521,14 @@ function openSync(){
     </div></div>`;
   document.body.appendChild(sov);
   const close=()=>sov.style.display="none";
-  const saveCfg=()=>{ syncSet(SUK,document.getElementById("sy-url").value.trim()); syncSet(SAK,document.getElementById("sy-auto").checked?"1":"0"); };
+  const saveCfg=()=>{ syncSet(SUK,document.getElementById("sy-url").value.trim()); syncSet(SAK,document.getElementById("sy-auto").checked?"1":"0");
+    syncSet(CUK,document.getElementById("cl-url").value.trim()); syncSet(COK,document.getElementById("cl-on").checked?"1":"0"); };
   document.getElementById("sy-x").onclick=close;
   document.getElementById("sy-close").onclick=close;
   document.getElementById("sy-savecfg").onclick=()=>{saveCfg();toast("連携設定を保存しました");};
   document.getElementById("sy-save").onclick=()=>{saveCfg();syncNow(true);};
+  document.getElementById("cl-save").onclick=()=>{saveCfg();cloudSaveNow(true);};
+  document.getElementById("cl-load").onclick=()=>{saveCfg();cloudLoad(true);};
   sov.addEventListener("click",e=>{if(e.target===sov)close();});
 })();
 
@@ -1430,4 +1536,6 @@ applyMode();
 show("menu");
 // ページを開いたら、自動同期がONなら取得
 if(syncGet(SAK)==="1" && (syncGet(SUK)||"").trim()){ setTimeout(()=>syncNow(false),300); }
+// 共有保存がONなら、開いたときにクラウドから読み込む（全端末で同じ数字）
+if(cloudOn() && cloudUrl()){ setTimeout(()=>cloudLoad(false),400); }
 </script>
