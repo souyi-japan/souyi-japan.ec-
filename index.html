@@ -364,6 +364,7 @@ menu.innerHTML=`
         <span id="fy-range" style="font-size:12px;color:#9fb0c0"></span>
       </div>
     </div>
+    <div id="menu-cl-refresh" style="font-size:12px;color:#cfe0ea;cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="共有保存された最新データを読み込みます">🔄 最新データを読み込む<span id="menu-cl-status" style="color:#8fa4b5"></span></div>
   </div>
   <div class="tiles">
     <button class="tile summary" data-go="summary"><div class="t">▶ サマリー</div><div class="d">全店の通期 売上・粗利・営業利益</div></button>
@@ -372,6 +373,11 @@ menu.innerHTML=`
   </div>`;
 main.appendChild(menu);
 menu.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>show(b.dataset.go));
+document.getElementById("menu-cl-refresh").onclick=()=>{
+  if(!CLOUD_URL){toast("共有保存URLが設定されていません");return;}
+  const st=document.getElementById("menu-cl-status");if(st)st.textContent="　読込中…";
+  cloudLoad(true).then(ok=>{ if(st)st.textContent=ok?"　済":""; });
+};
 // fiscal selector
 const fyY=document.getElementById("fy-year"),fyM=document.getElementById("fy-month");
 fyY.value=FY.y;fyM.value=FY.m;
@@ -1527,7 +1533,8 @@ function openSync(){
 
 applyMode();
 show("menu");
-// ページを開いたら、共有保存がONなら最新データを読込。ネクストエンジン自動同期がONならそちらも取得。
-if(cloudGet(CLK)==="1" && CLOUD_URL){ setTimeout(()=>cloudLoad(false),250); }
+// ページを開いたら、共有保存URLが設定されていれば（ログイン状態やチェックの有無に関係なく）常に最新データを読込。
+// ※保存（書き込み）は引き続き「共有保存を使う」がONの端末のみ行います。
+if(CLOUD_URL){ setTimeout(()=>cloudLoad(false),250); }
 if(syncGet(SAK)==="1" && (syncGet(SUK)||"").trim()){ setTimeout(()=>syncNow(false),300); }
 </script>
