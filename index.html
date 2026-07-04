@@ -37,6 +37,9 @@
   .hbtn{margin-left:auto;appearance:none;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.10);
     color:#fff;font-family:var(--sans);font-size:12px;font-weight:700;padding:8px 13px;border-radius:9px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
   .hbtn:hover{background:rgba(255,255,255,.2)}
+  .homebtn{margin-left:auto;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.55)}
+  .homebtn:hover{background:rgba(255,255,255,.3);border-color:#fff}
+  .bar #authbtn{margin-left:8px}
   .viewer .edit-only{display:none!important}
   nav{display:flex;flex-wrap:wrap;gap:7px;padding:9px 14px 11px}
   nav button{appearance:none;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:#fff;font-family:var(--sans);
@@ -82,9 +85,15 @@
   .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
+  .scroll td{border-bottom:1px solid #79ade4}
+  .scroll td.rowlabel{border-bottom:0}
+  .scroll tr.sepline td{border-bottom:2px solid #79ade4}
+  .scroll tr.sepline td.rowlabel{border-bottom:2px solid #79ade4}
+  #an-table thead th{top:0}
+  #an-table td{border-bottom:1px solid #79ade4}
   thead th{position:sticky;top:var(--stick2,168px);background:var(--line-green);color:#fff;font-weight:600;z-index:9;text-align:right;padding:4px 8px;font-size:12px;line-height:1.2;white-space:nowrap}
   thead th:first-child{text-align:left;left:0;z-index:11}
-  .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
+  .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid #79ade4;min-width:170px}
   tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
   tr.section .rowlabel{background:var(--sec)}
   tr.sub td{background:#f4f6f4;font-weight:700} tr.sub .rowlabel{background:#f4f6f4;font-weight:700}
@@ -95,7 +104,9 @@
   tr.in .rowlabel{padding-left:calc(9px + 1em)}
   tr.kpip .rowlabel{font-weight:500;padding-left:calc(9px + 1em)}
   td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-  td.total{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;border-left:2px solid var(--line-strong);background:#fbfcfb}
+  td.total{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;border-left:2px solid #79ade4;background:#fbfcfb}
+  .scroll thead th:last-child{border-left:2px solid rgba(255,255,255,.45)}
+  .scroll tr.section td:last-child{border-left:2px solid #79ade4}
   input{width:100%;border:1px solid transparent;background:transparent;text-align:right;font-family:var(--mono);
     font-variant-numeric:tabular-nums;font-size:13px;color:#0a3d91;padding:3px 4px;border-radius:5px}
   input:hover{border-color:var(--line)}
@@ -204,6 +215,7 @@
       <div class="company">ソウイジャパン株式会社<span class="dept">ECモール事業部</span></div>
       <div class="titles"><h1>EC事業部　各モール店舗別 損益表</h1><span class="sub">全12店舗 ＋ 通期サマリー</span></div>
     </div>
+    <button class="hbtn homebtn" id="homebtn">◀ メニューに戻る</button>
     <button class="hbtn" id="authbtn">🔒 ログイン</button>
   </div>
   <nav id="nav"></nav>
@@ -378,6 +390,7 @@ PAGES.forEach(p=>{
   const b=document.createElement("button");b.innerHTML=fmtName(p.label);b.dataset.go=p.id;
   b.onclick=()=>show(p.id);nav.appendChild(b);
 });
+{const hb=document.getElementById("homebtn"); if(hb)hb.onclick=()=>show("menu");}
 
 function show(id){
   document.querySelectorAll(".page").forEach(el=>el.classList.toggle("on",el.id==="pg-"+id));
@@ -439,7 +452,7 @@ const DISPLAY=[
   {type:"section",label:"売上"},
   {type:"in",k:"uriage",label:"売上高"},
   {type:"kpip",f:"uriageInc",label:"売上高（先月比）",fmt:"yeninc"},
-  {type:"sub",f:"sales",label:"売上合計"},
+  {type:"sub",f:"sales",label:"売上合計",sep:1},
   {type:"section",label:"変動費"},
   {type:"in",k:"genka",label:"商品原価"},
   {type:"in",k:"tesuryoRate",label:"モール手数料率％",fmt:"rate"},
@@ -448,17 +461,17 @@ const DISPLAY=[
   {type:"in",k:"kessai",label:"決済手数料"},
   {type:"in",k:"hasso",label:"発送費（実費）"},
   {type:"in",k:"agency",label:"代理店・手数料"},
-  {type:"sub",f:"vc",label:"変動費合計"},
+  {type:"sub",f:"vc",label:"変動費合計",sep:1},
   {type:"gp",f:"gp",label:"粗利益"},
-  {type:"gp",f:"gpRate",label:"粗利率％",fmt:"pct"},
+  {type:"gp",f:"gpRate",label:"粗利率％",fmt:"pct",sep:1},
   {type:"section",label:"広告・販促費"},
   {type:"in",k:"kokoku",label:"広告費・RPP"},
   {type:"in",k:"promo",label:"その他販促費"},
-  {type:"sub",f:"ad",label:"広告販促費合計"},
+  {type:"sub",f:"ad",label:"広告販促費合計",sep:1},
   {type:"op",f:"op",label:"営業利益"},
   {type:"op",f:"opRate",label:"営業利益率％",fmt:"pct"},
   {type:"op",f:"adRate",label:"広告費比率（売上高）",fmt:"pct"},
-  {type:"op",f:"roas",label:'ROAS<span class="tip" data-tip="売上÷広告費">？</span>',fmt:"mult"},
+  {type:"op",f:"roas",label:'ROAS<span class="tip" data-tip="売上÷広告費">？</span>',fmt:"mult",sep:1},
   {type:"section",label:"参考指標"},
   {type:"kpip",f:"aov",label:'客単価（店舗）<span class="tip" data-tip="売上高÷販売件数">？</span>',fmt:"yen"},
   {type:"in",k:"kensu",label:"件数（全店舗）",fmt:"cnt"},
@@ -467,7 +480,7 @@ const DISPLAY=[
   {type:"in",k:"fav",label:"お気に入り登録数",fmt:"cnt"},
   {type:"in",k:"review",label:"商品レビュー数",fmt:"cnt"},
   {type:"kpin",f:"favInc",label:"お気に入り（増数）",fmt:"cnt"},
-  {type:"kpin",f:"reviewInc",label:"商品レビュー（増数）",fmt:"cnt"},
+  {type:"kpin",f:"reviewInc",label:"商品レビュー（増数）",fmt:"cnt",sep:1},
   {type:"section",label:"広告経由実績"},
   {type:"in",k:"av_uriage",label:"売上（広告）",fmt:"yen"},
   {type:"in",k:"av_kensu",label:"売上件数（広告）",fmt:"cnt"},
@@ -475,7 +488,7 @@ const DISPLAY=[
   {type:"kpip",f:"avCvr",label:'転換率（広告）<span class="tip" data-tip="販売件数÷アクセス">？</span>',fmt:"pct"},
   {type:"kpip",f:"avAov",label:'客単価（広告）<span class="tip" data-tip="広告売上÷広告販売売上件数">？</span>',fmt:"yen"},
   {type:"kpip",f:"avAdRate",label:'広告費率<span class="tip" data-tip="広告費÷売上">？</span>',fmt:"pct"},
-  {type:"kpip",f:"avRoas",label:'ROAS（広告）<span class="tip" data-tip="売上÷広告費">？</span>',fmt:"mult"},
+  {type:"kpip",f:"avRoas",label:'ROAS（広告）<span class="tip" data-tip="売上÷広告費">？</span>',fmt:"mult",sep:1},
 ];
 
 // ===== charts (dependency-free SVG) & analysis =====
@@ -673,7 +686,7 @@ function buildTable(sid){
     if(row.type==="section"){
       h+=`<tr class="section"><td class="rowlabel">${row.label}</td>`+MONTHS.map(()=>"<td></td>").join("")+"<td></td></tr>";return;
     }
-    h+=`<tr class="${row.type}"><td class="rowlabel">${row.label}</td>`;
+    h+=`<tr class="${row.type}${row.sep?' sepline':''}"><td class="rowlabel">${row.label}</td>`;
     for(let m=0;m<12;m++){
       if(row.type==="in"){
         h+=`<td class="inp"><input inputmode="numeric" data-s="${sid}" data-k="${row.k}" data-m="${m}"></td>`;
@@ -929,13 +942,6 @@ man.innerHTML=`
       <p>売上合計＝売上高 ／ 変動費合計＝原価＋手数料＋ポイント＋決済手数料＋発送費＋代理店運営手数料</p>
       <p>列は決算期の12か月です（既定：2026年7月〜2027年6月）。メニュー上部の「決算期の開始」で年・月を変えると全ページの見出しが切り替わります。</p>
       <p>粗利益＝売上合計−変動費合計 ／ 営業利益＝粗利益−広告販促費合計</p>
-      <h3>このページを公開URLにする方法</h3>
-      <p>このHTMLファイル1つで完結しています。次のいずれかにアップロードすると公開URLになります：</p>
-      <ul>
-        <li><b>GitHub Pages</b>：リポジトリに置いて Pages を有効化（無料）。</li>
-        <li><b>Netlify / Vercel / Cloudflare Pages</b>：ファイルをドラッグ＆ドロップで即公開（無料枠あり）。</li>
-        <li><b>Googleサイト / 自社サーバー</b>：HTMLとして配置。</li>
-      </ul>
     </div>
   </div>
   <div id="man-csv" style="display:none">
