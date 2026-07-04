@@ -24,7 +24,7 @@
   body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
   header{position:sticky;top:0;z-index:20;background:var(--line-green);color:#fff;border-bottom:3px solid #14507a}
   .bar{display:flex;align-items:center;gap:14px;padding:13px 20px 11px}
-  .brandlogo{height:40px;width:auto;max-width:210px;flex:0 0 auto;display:block}
+  .brandlogo{height:26px;width:auto;max-width:140px;flex:0 0 auto;display:block;filter:brightness(0) drop-shadow(1px 0 0 #2b7de0) drop-shadow(-1px 0 0 #2b7de0) drop-shadow(0 1px 0 #2b7de0) drop-shadow(0 -1px 0 #2b7de0)}
   .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2f7d95,#0f766e);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;
     box-shadow:0 3px 12px rgba(0,0,0,.28);flex:0 0 auto;letter-spacing:.02em}
@@ -118,8 +118,9 @@
     font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s}
   .btn:hover{background:#eef1ee}
   .btn.warn{color:var(--neg);border-color:#e3bdbb}
-  .btn.btn-cloud{background:#d6e6f8;border-color:#bcd6ee;color:#14507a}
-  .btn.btn-cloud:hover{background:#c3d9f0}
+  .btn.btn-cloud{background:#e53935;border-color:#e53935;color:#fff}
+  .btn.btn-cloud:hover{background:#2b7de0;border-color:#2b7de0;color:#fff}
+  #menu-cl-refresh:hover{background:#d6e6f8!important;color:#14507a!important}
   .subtab.on{background:var(--line-green);color:#fff;border-color:var(--line-green)}
   .hint{font-size:12px;color:var(--muted);margin-top:6px}
 
@@ -135,9 +136,9 @@
   .guide{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 24px 22px;max-width:860px}
   .guide h3{color:var(--ink);border-bottom:2px solid var(--sec);padding-bottom:6px;margin:22px 0 10px;font-size:15px}
   .guide p,.guide li{font-size:13px;color:var(--ink-soft)} .guide code{background:var(--sec);padding:1px 6px;border-radius:5px;font-size:12px}
-  .back{font-size:12px;color:var(--ink);cursor:pointer;display:inline-block;margin-bottom:12px;
-    border:1px solid var(--line-strong);background:var(--card);padding:7px 14px;border-radius:9px;font-weight:600;transition:.15s}
-  .back:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .back{font-size:12px;color:#fff;cursor:pointer;display:inline-block;margin-bottom:12px;
+    border:1px solid #1b1f24;background:#1b1f24;padding:7px 14px;border-radius:9px;font-weight:600;transition:.15s}
+  .back:hover{background:#fff;color:#1b1f24;border-color:#1b1f24}
 
   #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;
     background:var(--ink);color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;transition:.25s;z-index:50;pointer-events:none}
@@ -169,7 +170,7 @@
   /* ===== スマートフォン最適化 ===== */
   @media (max-width:720px){
     .bar{flex-wrap:wrap;gap:10px;padding:10px 14px}
-    .brandlogo{height:30px;max-width:150px}
+    .brandlogo{height:21px;max-width:105px}
     .company{font-size:11px;gap:7px}
     .dept{font-size:10px;padding:2px 8px}
     .bar h1{font-size:15px}
@@ -178,7 +179,7 @@
     nav{padding:0 8px}
     #nav button{font-size:13.5px;padding:8px 13px}
     main{padding:14px 12px 70px}
-    .bar{padding:11px 12px 9px} nav{padding:8px 8px 10px}
+    .bar{padding:11px 12px 9px} nav{padding:8px 8px 10px;flex-wrap:nowrap;overflow-x:auto}
     .menu-hero{padding:16px 15px 15px;border-radius:12px;margin-bottom:16px}
     .menu-hero h2{font-size:18px}
     .menu-hero p{font-size:12px;line-height:1.6}
@@ -201,7 +202,7 @@
     .pv table{min-width:520px}
   }
   @media (max-width:420px){
-    .brandlogo{height:26px;max-width:120px}
+    .brandlogo{height:19px;max-width:88px}
     .company{font-size:10px}
     .hbtn{font-size:10px;padding:6px 8px}
     .menu-hero h2{font-size:16px}
