@@ -12,8 +12,8 @@
 <style>
   :root{
     --ink:#16202e; --ink-soft:#3a4a5e; --line:#dfe3df; --line-strong:#c4cbc4;
-    --paper:#f5f6f3; --card:#ffffff; --muted:#76817a;
-    --pos:#0f766e; --neg:#b4231f; --accent:#1f6f8b;
+    --paper:#eef3f9; --card:#ffffff; --muted:#76817a;
+    --pos:#06c755; --neg:#e02f2f; --accent:#2b7de0; --line-green:#2b7de0;
     --rakuten:#bf0000; --amazon:#d97706; --yahoo:#c40d0d; --own:#3f7a34;
     --sec:#eef1ee;
     --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
@@ -22,7 +22,7 @@
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
-  header{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;border-bottom:3px solid var(--accent)}
+  header{position:sticky;top:0;z-index:20;background:var(--line-green);color:#fff;border-bottom:3px solid #14507a}
   .bar{display:flex;align-items:center;gap:14px;padding:13px 20px 11px}
   .brandlogo{height:40px;width:auto;max-width:210px;flex:0 0 auto;display:block}
   .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2f7d95,#0f766e);
@@ -30,19 +30,19 @@
     box-shadow:0 3px 12px rgba(0,0,0,.28);flex:0 0 auto;letter-spacing:.02em}
   .brand{display:flex;flex-direction:column;gap:3px;min-width:0}
   .company{font-size:13px;font-weight:700;letter-spacing:.06em;color:#eaf2f8;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .dept{font-size:11px;font-weight:700;letter-spacing:.05em;background:var(--accent);color:#fff;padding:2px 10px;border-radius:20px;white-space:nowrap}
+  .dept{font-size:11px;font-weight:800;letter-spacing:.05em;background:#fff;color:var(--line-green);padding:2px 10px;border-radius:20px;white-space:nowrap}
   .titles{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
   .bar h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.04em;color:#fff}
-  .bar .sub{font-size:11px;color:#9fb0c0;letter-spacing:.06em;font-weight:400}
+  .bar .sub{font-size:11px;color:#eef5ff;letter-spacing:.06em;font-weight:400}
   .hbtn{margin-left:auto;appearance:none;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.10);
     color:#fff;font-family:var(--sans);font-size:12px;font-weight:700;padding:8px 13px;border-radius:9px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
   .hbtn:hover{background:rgba(255,255,255,.2)}
   .viewer .edit-only{display:none!important}
-  nav{display:flex;gap:2px;overflow-x:auto;padding:0 12px 0}
-  nav button{appearance:none;border:0;background:transparent;color:#aebccb;font-family:var(--sans);
-    font-size:13px;font-weight:600;padding:9px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:.15s}
-  nav button:hover{color:#fff}
-  nav button.on{color:#fff;border-bottom-color:#fff}
+  nav{display:flex;flex-wrap:wrap;gap:7px;padding:9px 14px 11px}
+  nav button{appearance:none;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:#fff;font-family:var(--sans);
+    font-size:14.5px;font-weight:700;padding:9px 16px;cursor:pointer;border-radius:8px;white-space:nowrap;transition:.15s;line-height:1.2;letter-spacing:.02em}
+  nav button:hover{background:rgba(255,255,255,.3);color:#fff;border-color:#fff}
+  nav button.on{background:#fff;color:#1e6091;border-color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.18)}
   main{max-width:none;margin:0;padding:22px 20px 80px}
   .page{display:none;animation:fade .25s ease}
   .page.on{display:block}
@@ -50,7 +50,7 @@
   @media (prefers-reduced-motion:reduce){.page{animation:none}}
 
   /* menu */
-  .menu-hero{background:var(--ink);color:#fff;border-radius:14px;padding:26px 26px 22px;margin-bottom:20px}
+  .menu-hero{background:var(--line-green);color:#fff;border-radius:14px;padding:26px 26px 22px;margin-bottom:20px}
   .menu-hero h2{margin:0 0 4px;font-size:22px;letter-spacing:.02em}
   .menu-hero p{margin:0;color:#9fb0c0;font-size:13px;max-width:none;text-align:justify;text-justify:inter-character;line-height:1.7}
   .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
@@ -82,7 +82,7 @@
   .scroll{overflow:visible;border:1px solid var(--line);border-radius:11px;background:var(--card)}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
   th,td{padding:7px 9px;font-size:13px;text-align:right;border-bottom:1px solid var(--line)}
-  thead th{position:sticky;top:var(--stick2,168px);background:var(--ink);color:#fff;font-weight:600;z-index:9;text-align:right;padding:4px 8px;font-size:12px;line-height:1.2;white-space:nowrap}
+  thead th{position:sticky;top:var(--stick2,168px);background:var(--line-green);color:#fff;font-weight:600;z-index:9;text-align:right;padding:4px 8px;font-size:12px;line-height:1.2;white-space:nowrap}
   thead th:first-child{text-align:left;left:0;z-index:11}
   .rowlabel{text-align:left;position:sticky;left:0;background:var(--card);font-weight:500;z-index:2;border-right:1px solid var(--line);min-width:170px}
   tr.section td{background:var(--sec);font-weight:800;color:var(--ink);letter-spacing:.03em;font-size:15px;padding-top:11px;padding-bottom:11px}
@@ -107,14 +107,15 @@
     font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s}
   .btn:hover{background:#eef1ee}
   .btn.warn{color:var(--neg);border-color:#e3bdbb}
-  .subtab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .subtab.on{background:var(--line-green);color:#fff;border-color:var(--line-green)}
   .hint{font-size:12px;color:var(--muted);margin-top:6px}
 
   /* summary */
   .sumcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
   .sc{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .sc .k{font-size:12px;color:var(--muted)} .sc .v{font-size:22px;font-weight:800;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
-  .sumtable td.store{font-weight:700;text-align:left;cursor:pointer;color:var(--accent)}
+  .sc .k{font-size:12px;color:#1b1f24;font-weight:600} .sc .v{font-size:22px;font-weight:800;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
+  .sumtable td.store{font-weight:700;text-align:left;cursor:pointer;color:#1b1f24}
+  .sumtable td{border-bottom:1px solid #79ade4}
   .sumtable td.store:hover{text-decoration:underline}
 
   /* guide */
@@ -133,7 +134,7 @@
   #ov{position:fixed;inset:0;background:rgba(16,22,30,.55);display:none;z-index:60;padding:24px;overflow:auto}
   #ov.show{display:block}
   .modal{max-width:760px;margin:24px auto;background:var(--card);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden}
-  .modal .mh{background:var(--ink);color:#fff;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+  .modal .mh{background:var(--line-green);color:#fff;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
   .modal .mh h3{margin:0;font-size:16px} .modal .mh .x{cursor:pointer;font-size:20px;color:#9fb0c0}
   .modal .mb{padding:18px 20px}
   .modal .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
@@ -162,13 +163,14 @@
     .bar .sub{font-size:10px}
     .hbtn{margin-left:auto;font-size:11px;padding:7px 10px}
     nav{padding:0 8px}
-    #nav button{font-size:13px;padding:9px 10px}
+    #nav button{font-size:13.5px;padding:8px 13px}
     main{padding:14px 12px 70px}
-    .bar{padding:11px 12px 9px} nav{padding:0 6px}
+    .bar{padding:11px 12px 9px} nav{padding:8px 8px 10px}
     .menu-hero{padding:16px 15px 15px;border-radius:12px;margin-bottom:16px}
     .menu-hero h2{font-size:18px}
     .menu-hero p{font-size:12px;line-height:1.6}
     .tiles{grid-template-columns:1fr;gap:10px}
+    .sumcards{grid-template-columns:1fr 1fr;gap:10px}
     .sheet-head{gap:10px;margin-bottom:12px}
     .name{font-size:15px}
     .readout{margin-left:0}
@@ -398,7 +400,7 @@ menu.innerHTML=`
         <span style="font-size:13px;font-weight:700">決算期の開始</span>
         <select id="fy-year" style="padding:6px 8px;border-radius:8px;border:0;font-family:var(--sans)">${yrOpts}</select>
         <select id="fy-month" style="padding:6px 8px;border-radius:8px;border:0;font-family:var(--sans)">${moOpts}</select>
-        <span id="fy-range" style="font-size:12px;color:#9fb0c0"></span>
+        <span id="fy-range" style="font-size:12px;color:#14507a;background:#d6e6f8;padding:3px 12px;border-radius:20px;font-weight:700;letter-spacing:.02em;display:inline-block"></span>
       </div>
     </div>
     <div id="menu-cl-refresh" style="font-size:12px;color:#cfe0ea;cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="共有保存された最新データを読み込みます">🔄 最新データを読み込む<span id="menu-cl-status" style="color:#8fa4b5"></span></div>
@@ -825,8 +827,8 @@ function renderAnalysis(){
     const pre=Array.from({length:12},(_,m)=>STORES.reduce((t,s)=>t+valMD(prev,s.id,m,meta),0));
     const cs=cur.reduce((a,b)=>a+b,0), ps=pre.reduce((a,b)=>a+b,0);
     const yoy=(c,p)=>p>0?((c-p)/p*100).toFixed(1)+"%":"–";
-    let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--ink);color:#fff">区分</th>`+
-      MONTHS.map(m=>`<th style="background:var(--ink);color:#fff">${m}</th>`).join("")+`<th style="background:var(--ink);color:#fff">通期</th></tr></thead><tbody>`;
+    let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--line-green);color:#fff">区分</th>`+
+      MONTHS.map(m=>`<th style="background:var(--line-green);color:#fff">${m}</th>`).join("")+`<th style="background:var(--line-green);color:#fff">通期</th></tr></thead><tbody>`;
     h+=`<tr><td class="rowlabel">今年</td>`+cur.map(v=>`<td class="num">${fmt(v)}</td>`).join("")+`<td class="total">${fmt(cs)}</td></tr>`;
     h+=`<tr><td class="rowlabel">前年</td>`+pre.map(v=>`<td class="num">${fmt(v)}</td>`).join("")+`<td class="total">${fmt(ps)}</td></tr>`;
     h+=`<tr class="sub"><td class="rowlabel">前年比</td>`+cur.map((v,i)=>`<td class="num">${yoy(v,pre[i])}</td>`).join("")+`<td class="total">${yoy(cs,ps)}</td></tr>`;
@@ -834,8 +836,8 @@ function renderAnalysis(){
     tw.innerHTML=h;
     return;
   }
-  let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--ink);color:#fff">店舗</th>`+
-    MONTHS.map(m=>`<th style="background:var(--ink);color:#fff">${m}</th>`).join("")+`<th style="background:var(--ink);color:#fff">通期</th></tr></thead><tbody>`;
+  let h=`<table><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--line-green);color:#fff">店舗</th>`+
+    MONTHS.map(m=>`<th style="background:var(--line-green);color:#fff">${m}</th>`).join("")+`<th style="background:var(--line-green);color:#fff">通期</th></tr></thead><tbody>`;
   STORES.forEach(s=>{
     h+=`<tr><td class="rowlabel" style="min-width:120px">${s.name}</td>`;
     for(let m=0;m<12;m++)h+=`<td class="num">${fmt(valM(s.id,m,meta))}</td>`;
