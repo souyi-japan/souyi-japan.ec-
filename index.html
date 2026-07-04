@@ -118,6 +118,8 @@
     font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s}
   .btn:hover{background:#eef1ee}
   .btn.warn{color:var(--neg);border-color:#e3bdbb}
+  .btn.btn-cloud{background:#d6e6f8;border-color:#bcd6ee;color:#14507a}
+  .btn.btn-cloud:hover{background:#c3d9f0}
   .subtab.on{background:var(--line-green);color:#fff;border-color:var(--line-green)}
   .hint{font-size:12px;color:var(--muted);margin-top:6px}
 
@@ -415,8 +417,8 @@ menu.innerHTML=`
         <select id="fy-month" style="padding:6px 8px;border-radius:8px;border:0;font-family:var(--sans)">${moOpts}</select>
         <span id="fy-range" style="font-size:12px;color:#14507a;background:#d6e6f8;padding:3px 12px;border-radius:20px;font-weight:700;letter-spacing:.02em;display:inline-block"></span>
       </div>
+      <span id="menu-cl-refresh" style="margin-left:auto;font-size:12px;color:#fff;background:#e53935;padding:6px 14px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-weight:700" title="共有保存された最新データを読み込みます">🔄 最新データを読み込む<span id="menu-cl-status" style="color:#ffe0e0;font-weight:400"></span></span>
     </div>
-    <div id="menu-cl-refresh" style="font-size:12px;color:#cfe0ea;cursor:pointer;display:inline-flex;align-items:center;gap:5px" title="共有保存された最新データを読み込みます">🔄 最新データを読み込む<span id="menu-cl-status" style="color:#8fa4b5"></span></div>
   </div>
   <div class="tiles">
     <button class="tile summary" data-go="summary"><div class="t">▶ サマリー</div><div class="d">全店の通期 売上・粗利・営業利益</div></button>
@@ -656,6 +658,7 @@ STORES.forEach(s=>{
       <button class="btn edit-only" data-import="${s.id}">CSV取込</button>
       <button class="btn" data-csv="${s.id}">この店舗をCSV書き出し</button>
       <button class="btn" data-tpl="${s.id}">取込テンプレCSV</button>
+      <button class="btn btn-cloud" data-cloud="${s.id}">🔄 最新データを読み込む</button>
       <button class="btn warn edit-only" data-clear="${s.id}">この店舗を全消去</button>
     </div>
     <div class="sheet-head">
@@ -675,6 +678,7 @@ STORES.forEach(s=>{
   pg.querySelector("[data-import]").onclick=()=>openImport(s.id);
   pg.querySelector("[data-csv]").onclick=()=>exportStore(s.id);
   pg.querySelector("[data-tpl]").onclick=()=>downloadTemplate(s.id);
+  {const cb=pg.querySelector("[data-cloud]"); if(cb)cb.onclick=()=>cloudLoad(true);}
   pg.querySelector("[data-clear]").onclick=()=>clearStore(s.id);
   buildTable(s.id);
 });
@@ -755,7 +759,10 @@ function colorCell(td,fmt,v,f){
 // summary page
 const sp=document.createElement("section");sp.className="page";sp.id="pg-summary";
 sp.innerHTML=`
-  <span class="back" data-go="menu">◀ メニューに戻る</span>
+  <div class="tools" style="align-items:center">
+    <span class="back" data-go="menu" style="margin:0">◀ メニューに戻る</span>
+    <button class="btn btn-cloud" id="sum-cloud">🔄 最新データを読み込む</button>
+  </div>
   <h2 style="margin:6px 0 4px">全店舗サマリー</h2>
   <div id="sum-period" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
@@ -768,6 +775,7 @@ sp.innerHTML=`
   <div class="tools"><button class="btn edit-only" id="allimport">全店舗一括CSV取込</button><button class="btn" id="allcsv">全店まとめてCSV書き出し</button></div>`;
 main.appendChild(sp);
 sp.querySelector("[data-go]").onclick=()=>show("menu");
+{const cb=sp.querySelector("#sum-cloud"); if(cb)cb.onclick=()=>cloudLoad(true);}
 sp.querySelector("#allcsv").onclick=exportAll;
 sp.querySelector("#allimport").onclick=()=>openImport(null);
 sp.querySelector("#sum-mode").onchange=renderSummary;
