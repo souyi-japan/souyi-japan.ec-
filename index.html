@@ -1474,7 +1474,9 @@ function cloudLoad(manual){
 function persistLocalOnly_(){ try{localStorage.setItem(ADK,JSON.stringify(allData));}catch(e){mem[ADK]=allData;} }
 function persistPrevLocalOnly_(){ try{localStorage.setItem(APK,JSON.stringify(allPrev));}catch(e){mem[APK]=allPrev;} }
 // 入力時：共有保存が有効なら、少し待ってからまとめてクラウドへ保存（連続入力での連打を防止）
+let __lastEditAt=0;
 function cloudScheduleSave(){
+  __lastEditAt=Date.now();
   if(!CLOUD_URL && cloudGet(CLK)!=="1")return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>cloudSaveNow(false),1500);
@@ -1604,4 +1606,47 @@ show("menu");
 // ※保存（書き込み）は引き続き「共有保存を使う」がONの端末のみ行います。
 if(CLOUD_URL){ setTimeout(()=>cloudLoad(false),250); }
 if(syncGet(SAK)==="1" && (syncGet(SUK)||"").trim()){ setTimeout(()=>syncNow(false),300); }
+
+// ===== 2秒ごとの自動読み込み（他端末の更新を自動反映） =====
+let __cloudSig=null, cloudAutoTimer=null;
+function cloudAutoTick(){
+  if(!CLOUD_URL) return;
+  if(document.hidden) return;                 // タブが非表示のときは休止（通信節約）
+  if(cloudLoading) return;                     // 手動読込中はスキップ
+  if(Date.now()-__lastEditAt < 3000) return;   // 入力直後（保存待ち）はスキップして上書きを防ぐ
+  const ae=document.activeElement;             // 入力中のセルがあるときはスキップ
+  if(ae && ae.tagName==="INPUT") return;
+  const cb="__cloudAuto"+Date.now(); let sc; const tm=setTimeout(cleanup,8000);
+  function cleanup(){ clearTimeout(tm); try{delete window[cb];}catch(e){} if(sc&&sc.parentNode)sc.parentNode.removeChild(sc); }
+  window[cb]=function(res){
+    try{
+      const state=res&&res.state;
+      if(!state || (!state.allData && !state.data)){ cleanup(); return; }
+      const sig=JSON.stringify(state);
+      if(sig===__cloudSig){ cleanup(); return; }   // 変化なし→再描画しない
+      __cloudSig=sig;
+      const mergeArr=(dst,src)=>{ Object.keys(src).forEach(sid=>{ if(dst[sid]){ Object.keys(src[sid]).forEach(k=>{ const a=src[sid][k]; if(Array.isArray(a)&&a.length===12) dst[sid][k]=a.map(v=>+v||0); }); } }); };
+      if(state.allData){
+        Object.keys(state.allData).forEach(k=>{ ensureYear_(k); mergeArr(allData[k],state.allData[k]); });
+        if(state.allPrev) Object.keys(state.allPrev).forEach(k=>{ ensureYear_(k); mergeArr(allPrev[k],state.allPrev[k]); });
+      } else if(state.data){
+        const k=(state.fy&&state.fy.y&&state.fy.m)?fyKeyOf({y:+state.fy.y,m:+state.fy.m}):fyKeyOf(FY);
+        ensureYear_(k); mergeArr(allData[k],state.data);
+        if(state.prev) mergeArr(allPrev[k],state.prev);
+      }
+      persistLocalOnly_(); persistPrevLocalOnly_();
+      ensureYear_(fyKeyOf(FY)); data=allData[fyKeyOf(FY)]; prev=allPrev[fyKeyOf(FY)]; MONTHS=fyLabels();
+      // 入力中のセルは触らない（この時点でINPUTにフォーカスは無い前提）
+      STORES.forEach(s=>{ buildTable(s.id); const p=document.getElementById("per-"+s.id); if(p)p.textContent="決算期："+fyRangeText(); });
+      if(typeof syncFYrange==="function")syncFYrange();
+      if(document.getElementById("pg-summary")&&document.getElementById("pg-summary").classList.contains("on"))renderSummary();
+      if(document.getElementById("pg-analysis")&&document.getElementById("pg-analysis").classList.contains("on"))renderAnalysis();
+    }catch(e){}
+    cleanup();
+  };
+  sc=document.createElement("script");
+  sc.src=CLOUD_URL+(CLOUD_URL.indexOf("?")>=0?"&":"?")+"callback="+cb+"&t="+Date.now();
+  sc.onerror=cleanup; document.body.appendChild(sc);
+}
+if(CLOUD_URL){ cloudAutoTimer=setInterval(cloudAutoTick,6000); }
 </script>
