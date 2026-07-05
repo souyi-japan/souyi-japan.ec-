@@ -191,7 +191,9 @@
     .readout .val{font-size:20px}
     .tools{gap:6px}
     .btn{font-size:12px;padding:8px 10px}
-    /* スマホでも見出しを固定（PCと同じ）：横スクロール枠は使わずページごとスクロール */
+    /* スマホ：表は枠内で横スクロール。ページ・ヘッダーは横に動かさず、上のナビだけ左右スライド */
+    .scroll{overflow:auto;max-height:74vh;-webkit-overflow-scrolling:touch}
+    .scroll thead th{top:0}
     th,td{padding:7px 8px;font-size:12px}
     .rowlabel{min-width:132px}
     .card{padding:12px 12px}
