@@ -191,8 +191,8 @@
     .readout .val{font-size:20px}
     .tools{gap:6px}
     .btn{font-size:12px;padding:8px 10px}
-    /* スマホ：表は枠内で横スクロール。ページ・ヘッダーは横に動かさず、上のナビだけ左右スライド */
-    .scroll{overflow:auto;max-height:74vh;-webkit-overflow-scrolling:touch}
+    /* スマホ：データ表は枠内で左右スクロール（縦はページごと／ヘッダー・ナビは横に動かさない） */
+    .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
     .scroll thead th{top:0}
     th,td{padding:7px 8px;font-size:12px}
     .rowlabel{min-width:132px}
