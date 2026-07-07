@@ -662,13 +662,15 @@ function drawStoreCharts(sid){
 STORES.forEach(s=>{
   const pg=document.createElement("section");pg.className="page";pg.id="pg-"+s.id;
   pg.innerHTML=`
-    <div class="tools" style="align-items:center">
-      <span class="back" data-go="menu" style="margin:0">◀ メニューに戻る</span>
-      <button class="btn edit-only" data-import="${s.id}">CSV取込</button>
-      <button class="btn" data-csv="${s.id}">この店舗をCSV書き出し</button>
-      <button class="btn" data-tpl="${s.id}">取込テンプレCSV</button>
-      <button class="btn btn-cloud" data-cloud="${s.id}">🔄 最新データを読み込む</button>
-      <button class="btn warn edit-only" data-clear="${s.id}">この店舗を全消去</button>
+    <div class="menu-hero" style="padding:14px 18px;margin-bottom:16px">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+        <span class="back" data-go="menu" style="margin:0">◀ メニューに戻る</span>
+        <button class="btn edit-only" data-import="${s.id}">CSV取込</button>
+        <button class="btn" data-csv="${s.id}">この店舗をCSV書き出し</button>
+        <button class="btn" data-tpl="${s.id}">取込テンプレCSV</button>
+        <button class="btn warn edit-only" data-clear="${s.id}">この店舗を全消去</button>
+        <button class="btn btn-cloud" data-cloud="${s.id}" style="margin-left:auto">🔄 最新データを読み込む</button>
+      </div>
     </div>
     <div class="sheet-head">
       <div><div class="name"><span class="dot" style="background:${s.color}"></span>${fmtName(s.name)} ― 月次損益</div>
@@ -768,9 +770,11 @@ function colorCell(td,fmt,v,f){
 // summary page
 const sp=document.createElement("section");sp.className="page";sp.id="pg-summary";
 sp.innerHTML=`
-  <div class="tools" style="align-items:center">
-    <span class="back" data-go="menu" style="margin:0">◀ メニューに戻る</span>
-    <button class="btn btn-cloud" id="sum-cloud">🔄 最新データを読み込む</button>
+  <div class="menu-hero" style="padding:14px 18px;margin-bottom:16px">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+      <span class="back" data-go="menu" style="margin:0">◀ メニューに戻る</span>
+      <button class="btn btn-cloud" id="sum-cloud" style="margin-left:auto">🔄 最新データを読み込む</button>
+    </div>
   </div>
   <h2 style="margin:6px 0 4px">全店舗サマリー</h2>
   <div id="sum-period" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
