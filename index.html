@@ -41,12 +41,13 @@
   .homebtn:hover{background:rgba(255,255,255,.3);border-color:#fff}
   .bar #authbtn{margin-left:8px}
   .viewer .edit-only{display:none!important}
-  nav{display:flex;flex-wrap:wrap;gap:7px;padding:9px 14px 11px}
-  nav button{appearance:none;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:#fff;font-family:var(--sans);
-    font-size:14.5px;font-weight:700;padding:9px 16px;cursor:pointer;border-radius:8px;white-space:nowrap;transition:.15s;line-height:1.2;letter-spacing:.02em}
+  .layout{display:flex;align-items:flex-start}
+  nav{flex:0 0 210px;width:210px;align-self:stretch;display:flex;flex-direction:column;gap:7px;padding:14px 10px;background:var(--line-green);position:sticky;top:var(--stick,64px);max-height:calc(100vh - var(--stick,64px));overflow-y:auto}
+  nav button{appearance:none;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:#fff;font-family:var(--sans);width:100%;text-align:left;
+    font-size:14px;font-weight:700;padding:10px 14px;cursor:pointer;border-radius:8px;white-space:nowrap;transition:.15s;line-height:1.2;letter-spacing:.02em}
   nav button:hover{background:rgba(255,255,255,.3);color:#fff;border-color:#fff}
   nav button.on{background:#fff;color:#1e6091;border-color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-  main{max-width:none;margin:0;padding:22px 20px 80px}
+  main{flex:1;min-width:0;max-width:none;margin:0;padding:22px 20px 80px}
   .page{display:none;animation:fade .25s ease}
   .page.on{display:block}
   @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -179,7 +180,10 @@
     nav{padding:0 8px}
     #nav button{font-size:13.5px;padding:8px 13px}
     main{padding:14px 12px 70px}
-    .bar{padding:11px 12px 9px} nav{padding:8px 8px 10px;flex-wrap:nowrap;overflow-x:auto}
+    .bar{padding:11px 12px 9px}
+    .layout{flex-direction:column}
+    nav{flex:none;width:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;max-height:none;padding:8px 8px 10px}
+    nav button{width:auto;text-align:center}
     .menu-hero{padding:16px 15px 15px;border-radius:12px;margin-bottom:16px}
     .menu-hero h2{font-size:18px}
     .menu-hero p{font-size:12px;line-height:1.6}
@@ -223,10 +227,12 @@
     <button class="hbtn homebtn" id="homebtn">◀ メニューに戻る</button>
     <button class="hbtn" id="authbtn">🔒 ログイン</button>
   </div>
-  <nav id="nav"></nav>
 </header>
 
-<main id="main"></main>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
 <div id="toast"></div>
 
 <script>
